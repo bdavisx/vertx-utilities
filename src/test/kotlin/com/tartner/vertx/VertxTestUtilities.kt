@@ -1,0 +1,69 @@
+package com.tartner.vertx
+
+import com.tartner.vertx.codecs.EventBusJacksonJsonCodec
+import com.tartner.vertx.codecs.TypedObjectMapper
+import com.tartner.vertx.commands.CommandRegistrar
+import com.tartner.vertx.commands.CommandSender
+import com.tartner.vertx.events.EventRegistrar
+import com.tartner.vertx.events.EventPublisher
+import com.tartner.vertx.kodein.VerticleDeployer
+import com.tartner.vertx.kodein.i
+import com.tartner.vertx.kodein.vertxKodeinModule
+import io.vertx.core.Vertx
+import io.vertx.core.VertxOptions
+import io.vertx.core.eventbus.EventBus
+import io.vertx.core.file.FileSystem
+import io.vertx.core.shareddata.SharedData
+import io.vertx.ext.unit.TestContext
+import org.kodein.di.DKodein
+import org.kodein.di.Kodein
+import org.kodein.di.direct
+import org.kodein.di.generic.bind
+import org.kodein.di.generic.instance
+import org.kodein.di.generic.provider
+import org.kodein.di.generic.singleton
+
+data class VertxKodeinTestObjects(val vertx: Vertx, val dkodein: DKodein)
+
+fun testModule() = Kodein.Module("testModule") {
+}
+
+
+fun setupVertxKodein(modules: Iterable<Kodein.Module>, vertx: Vertx, testContext: TestContext)
+  : VertxKodeinTestObjects {
+
+  vertx.exceptionHandler(testContext.exceptionHandler())
+
+  val modulesWithVertx = mutableListOf(vertxKodeinModule(vertx), testModule())
+
+  modulesWithVertx.addAll(modules)
+  val dkodein = Kodein { modulesWithVertx.forEach { import(it) } }.direct
+
+  vertx.eventBus().registerCodec(EventBusJacksonJsonCodec(dkodein.instance()))
+
+  return VertxKodeinTestObjects(vertx, dkodein)
+}
+
+data class TestVertxObjects(
+  val vertx: Vertx,
+  val kodein: DKodein,
+  val commandSender: CommandSender,
+  val verticleDeployer: VerticleDeployer,
+  val commandRegistrar: CommandRegistrar,
+  val eventRegistrar: EventRegistrar,
+  val eventPublisher: EventPublisher,
+  val eventBus: EventBus
+)
+
+fun createTestVertxObjects(modules: Iterable<Kodein.Module>, vertx: Vertx, testContext: TestContext)
+  : TestVertxObjects {
+
+  val (vertx, kodein) = setupVertxKodein(modules, vertx, testContext)
+
+  vertx.exceptionHandler(testContext.exceptionHandler())
+
+  val vertxObjects = TestVertxObjects(vertx, kodein, kodein.i(), kodein.i(), kodein.i(), kodein.i(),
+    kodein.i(), kodein.i())
+  return vertxObjects
+}
+
