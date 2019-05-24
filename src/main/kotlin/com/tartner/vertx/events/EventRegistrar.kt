@@ -36,11 +36,11 @@ class EventRegistrar(
   private val commandSender: CommandSender
 ) {
 
-  fun <T: VSerializable>  registerEventHandler(
+  fun <T: Any>  registerEventHandler(
     eventClass: KClass<T>, handler: MessageHandler<T>): MessageConsumer<T> =
     eventBus.consumer<T>(eventClass.qualifiedName) { message -> handler(message.body()) }
 
-  fun <T: VSerializable> registerEventHandlerSuspendable(
+  fun <T: Any> registerEventHandlerSuspendable(
     scope: CoroutineScope, eventClass: KClass<T>, handler: SuspendableMessageHandler<T>) =
     eventBus.consumer<T>(eventClass.qualifiedName) { message ->
       scope.launch { handler(message.body()) } }
