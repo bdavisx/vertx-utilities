@@ -19,12 +19,9 @@ package com.tartner.vertx.events
 
 import com.tartner.vertx.MessageHandler
 import com.tartner.vertx.OpenForTesting
-import com.tartner.vertx.VSerializable
 import com.tartner.vertx.SuspendableMessageHandler
 import com.tartner.vertx.commands.CommandSender
-import io.vertx.core.Handler
 import io.vertx.core.eventbus.EventBus
-import io.vertx.core.eventbus.Message
 import io.vertx.core.eventbus.MessageConsumer
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch

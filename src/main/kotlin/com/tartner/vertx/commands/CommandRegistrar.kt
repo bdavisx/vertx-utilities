@@ -22,7 +22,6 @@ import com.tartner.vertx.OpenForTesting
 import com.tartner.vertx.ReplyMessageHandler
 import com.tartner.vertx.SuspendableMessageHandler
 import com.tartner.vertx.SuspendableReplyMessageHandler
-import com.tartner.vertx.VSerializable
 import com.tartner.vertx.debugIf
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.eventbus.MessageConsumer

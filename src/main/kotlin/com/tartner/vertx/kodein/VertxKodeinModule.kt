@@ -19,6 +19,7 @@ package com.tartner.vertx.kodein
 
 import com.tartner.utilities.RandomGenerator
 import com.tartner.vertx.IdGenerator
+import com.tartner.vertx.RouterVerticle
 import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandRegistrar
 import com.tartner.vertx.commands.CommandSender
@@ -55,4 +56,6 @@ fun vertxKodeinModule(vertx: Vertx) = Kodein.Module("vertxKodeinModule") {
 
   bind<RandomGenerator>() with singleton { RandomGenerator() }
   bind<IdGenerator>() with singleton { i<RandomGenerator>()::generateId }
+
+  bind<RouterVerticle>() with provider { RouterVerticle(i(), i(), i(), i()) }
 }

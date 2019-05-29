@@ -19,7 +19,6 @@ package com.tartner.vertx
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.tartner.vertx.functional.toRight
-import io.vertx.core.eventbus.Message
 import kotlin.reflect.KClass
 
 // MUSTFIX: Docs for these interfaces
