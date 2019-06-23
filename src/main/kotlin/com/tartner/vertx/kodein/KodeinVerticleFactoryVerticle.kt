@@ -18,6 +18,7 @@
 package com.tartner.vertx.kodein
 
 import com.tartner.vertx.Reply
+import com.tartner.vertx.RouterVerticle
 import com.tartner.vertx.VCommand
 import com.tartner.vertx.VEvent
 import com.tartner.vertx.VResponse
@@ -26,6 +27,7 @@ import com.tartner.vertx.debugIf
 import com.tartner.vertx.events.EventPublisher
 import io.vertx.core.CompositeFuture
 import io.vertx.core.Verticle
+import io.vertx.core.impl.cpu.CpuCoreSensor
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
@@ -37,10 +39,16 @@ import kotlin.reflect.full.findAnnotation
 
 /** Used to calculate the # of verticles to deploy; default is 1 if this annotation isn't used. */
 @Target(AnnotationTarget.CLASS)
+@MustBeDocumented
 annotation class PercentOfMaximumVerticleInstancesToDeploy(val percent: Short)
 
 @Target(AnnotationTarget.CLASS)
+@MustBeDocumented
 annotation class SpecificNumberOfVerticleInstancesToDeploy(val count: Int)
+
+@Target(AnnotationTarget.CLASS)
+@MustBeDocumented
+annotation class DependsOnVerticleClasses(val dependencies: Array<KClass<*>>)
 
 /**
  Configures maximum # to deploy for each call to the factory, not the overall maximum for the
@@ -73,10 +81,10 @@ class KodeinVerticleFactoryVerticle(
   private val log = LoggerFactory.getLogger(KodeinVerticleFactoryVerticle::class.java)
 
   companion object {
-    const val defaultMaximumInstancesToDeploy = 4
+    val defaultMaximumInstancesToDeploy = CpuCoreSensor.availableProcessors() * 2
   }
 
-  var maximumVerticleInstancesToDeploy: Int = defaultMaximumInstancesToDeploy
+  private var maximumVerticleInstancesToDeploy: Int = defaultMaximumInstancesToDeploy
 
   override suspend fun start() {
     super.start()
@@ -98,36 +106,19 @@ class KodeinVerticleFactoryVerticle(
     val verticles: List<CoroutineVerticle> = (1..numberOfInstances).map {
       kodein.AllProviders(TT(verticleClass)).first().invoke() }
 
-    val deploymentFutures = verticleDeployer.deployVerticles(vertx, verticles)
+    log.debug("Deploying ${verticleClass.qualifiedName}")
 
+    val deploymentFutures = verticleDeployer.deployVerticles(vertx, verticles)
     CompositeFuture.all(deploymentFutures).await()
+
+    if(verticleClass != RouterVerticle::class) {
+      deploymentFutures.forEach { log.debug("Deployment Future: ${it}") }
+    }
 
     eventPublisher.publish(VerticleInstancesDeployedEvent(verticleClass, numberOfInstances))
 
     val response = DeployVerticleInstancesResponse(deploymentFutures.map { it.result() })
     reply(response)
-
-/*
-    val verticleType = TT(kclass)
-
-    val StringFactory = kodein.direct.FactoryOrNull(TT(String::class.java), verticleType)
-    val verticleFactory: () -> Verticle =
-      if (StringFactory != null) {
-        log.debugIf { "Using a String factory (${StringFactory.toString()} to build the verticle" }
-        // if there's a String factory, we need to supply the String. This is generally done when deploying
-        // multiple instances of the same verticle
-        StringVerticleFactory(StringFactory, String.randomString()).factory
-      } else {
-        log.debugIf { "Using a 'direct/no arg' factory to build the verticle" }
-        kodein.direct.AllProviders(verticleType).first()
-      }
-
-  private class StringVerticleFactory(
-    val verticleFactory: ((String) -> Verticle), String: String) {
-    val factory: () -> Verticle = { verticleFactory.invoke(String) }
-  }
- */
-
   }
 
   private fun configureMaxInstances(

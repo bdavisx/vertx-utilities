@@ -68,7 +68,7 @@ data class TestVertxObjects(
 fun createTestVertxObjects(modules: Iterable<Kodein.Module>, vertx: Vertx, testContext: TestContext)
   : TestVertxObjects {
 
-  val (vertx, kodein) = setupVertxKodein(modules, vertx, testContext)
+  val (_, kodein) = setupVertxKodein(modules, vertx, testContext)
 
   vertx.exceptionHandler(testContext.exceptionHandler())
 

@@ -17,6 +17,7 @@
 
 package com.tartner.vertx.kodein
 
+import com.tartner.vertx.debugIf
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.Future
 import io.vertx.core.Verticle
@@ -44,9 +45,12 @@ class VerticleDeployer {
       val deploymentFuture = Future.future<VerticleDeployment>()
       vertx.deployVerticle(verticle, deploymentOptions) { result ->
         if (result.succeeded()) {
+          log.debugIf { "Successful deployment of $verticle" }
           deploymentFuture.complete(VerticleDeployment(verticle, result.result()))
         } else {
-          deploymentFuture.fail(result.cause())
+          val failureCause = result.cause()
+          log.error("Failure deploying verticle ($verticle); cause: $failureCause")
+          deploymentFuture.fail(failureCause)
         }
       }
       deploymentFuture

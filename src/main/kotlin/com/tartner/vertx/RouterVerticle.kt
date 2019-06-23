@@ -25,11 +25,12 @@ import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.kotlin.ext.web.api.contract.routerFactoryOptionsOf
 
 /** Note that there's no reply to this command, because the actual adding is done async. */
-data class AddSubrouterCommand(val handlerAddress: String, val route: String): VCommand
+data class AddRouteCommand(val handlerAddress: String, val route: String): VCommand
 data class HandleSubrouterCallCommand(val routingContext: RoutingContext): VCommand
-data class SubrouterAdded(val handlerAddress: String, val route: String): VEvent
+data class SubrouterAdded(val handlerAddress: String, val path: String): VEvent
 
 /*
 An address will be registered that takes a RoutingContext message and can do whatever with it.
@@ -51,25 +52,24 @@ class RouterVerticle(
     super.start()
 
     eventRegistrar.registerEventHandler(SubrouterAdded::class, ::subrouterAdded)
-    commandRegistrar.registerCommandHandler(AddSubrouterCommand::class, ::addSubrouter)
+    commandRegistrar.registerCommandHandler(AddRouteCommand::class, ::addSubrouter)
 
     server = vertx.createHttpServer()
     mainRouter = Router.router(vertx)
     server.requestHandler(mainRouter).listen(8080)
   }
 
-  private fun addSubrouter(command: AddSubrouterCommand, reply: Reply) {
+  private fun addSubrouter(command: AddRouteCommand) {
     // TODO: validation?
-    log.debug("Adding subrouter, sending event")
+    log.debug {"Adding subrouter, sending event - $command"}
     eventPublisher.publish(SubrouterAdded(command.handlerAddress, command.route))
   }
 
   private fun subrouterAdded(event: SubrouterAdded) {
-    log.debug("SubrouterAdded event received")
-    val router = Router.router(vertx)
-    router.get().handler { routingContext ->
+    log.debugIf {"SubrouterAdded event received - $event"}
+    val route = mainRouter.route().path(event.path)
+    route.handler { routingContext ->
       commandSender.send(event.handlerAddress, HandleSubrouterCallCommand(routingContext))
     }
-    mainRouter.mountSubRouter(event.route, router)
   }
 }
