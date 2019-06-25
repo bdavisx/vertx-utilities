@@ -81,7 +81,7 @@ class KodeinVerticleFactoryVerticle(
   private val log = LoggerFactory.getLogger(KodeinVerticleFactoryVerticle::class.java)
 
   companion object {
-    val defaultMaximumInstancesToDeploy = CpuCoreSensor.availableProcessors() * 2
+    val defaultMaximumInstancesToDeploy = CpuCoreSensor.availableProcessors()
   }
 
   private var maximumVerticleInstancesToDeploy: Int = defaultMaximumInstancesToDeploy
@@ -106,7 +106,7 @@ class KodeinVerticleFactoryVerticle(
     val verticles: List<CoroutineVerticle> = (1..numberOfInstances).map {
       kodein.AllProviders(TT(verticleClass)).first().invoke() }
 
-    log.debug("Deploying ${verticleClass.qualifiedName}")
+    log.debug("Deploying $numberOfInstances instances of ${verticleClass.qualifiedName}")
 
     val deploymentFutures = verticleDeployer.deployVerticles(vertx, verticles)
     CompositeFuture.all(deploymentFutures).await()

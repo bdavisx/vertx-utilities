@@ -61,7 +61,7 @@ class RouterVerticle(
 
   private fun addSubrouter(command: AddRouteCommand) {
     // TODO: validation?
-    log.debug {"Adding subrouter, sending event - $command"}
+    log.debugIf {"Received AddRouteCommand - Adding subrouter, sending event - $command"}
     eventPublisher.publish(SubrouterAdded(command.handlerAddress, command.route))
   }
 
