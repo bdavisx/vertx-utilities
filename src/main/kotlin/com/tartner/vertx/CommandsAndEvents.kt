@@ -17,6 +17,7 @@
 
 package com.tartner.vertx
 
+import arrow.core.Either
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.tartner.vertx.functional.toRight
 import kotlin.reflect.KClass
@@ -47,25 +48,24 @@ interface VResponse: VMessage
 
 data class AggregateId(val id: String)
 
-interface HasAggregateId {
-  val aggregateId: AggregateId
-}
+interface HasAggregateId { val aggregateId: AggregateId }
+interface HasAggregateVersion: HasAggregateId { val aggregateVersion: Long }
 
-interface AggregateEvent: VMessage, HasAggregateId
+interface AggregateEvent: VMessage, HasAggregateId, HasAggregateVersion
 
-interface HasComponentId {
-  val componentId: String
-}
+interface HasComponentId { val componentId: String }
 
 interface ComponentEvent: VEvent, HasComponentId
 
 interface ComponentSnapshot: ComponentEvent
 
-interface AggregateSnapshot: VSerializable
+interface AggregateSnapshot: VSerializable, HasAggregateVersion
 
-object SuccessReply: VMessage
-val successReplyRight = SuccessReply.toRight()
+interface SuccessReply: VMessage
+object DefaultSuccessReply: SuccessReply
+val successReplyRight = DefaultSuccessReply.toRight()
 
 interface FailureReply: VMessage
-data class ErrorReply(val message: String, val sourceClass: KClass<*>):
-  FailureReply
+data class ErrorReply(val message: String, val sourceClass: KClass<*>): FailureReply
+
+typealias SuccessOrFailure = Either<FailureReply, SuccessReply>

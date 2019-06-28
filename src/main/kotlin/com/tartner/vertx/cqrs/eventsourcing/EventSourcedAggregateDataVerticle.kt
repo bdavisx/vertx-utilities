@@ -16,66 +16,88 @@
 
 package com.tartner.vertx.cqrs.eventsourcing
 
-import arrow.core.*
-import com.fasterxml.jackson.module.kotlin.*
-import com.tartner.vertx.*
-import com.tartner.vertx.codecs.*
-import com.tartner.vertx.commands.*
-import com.tartner.vertx.cqrs.*
-import com.tartner.vertx.database.*
-import com.tartner.vertx.functional.*
-import io.vertx.core.json.*
-import io.vertx.core.logging.*
-import io.vertx.ext.jdbc.*
-import io.vertx.ext.sql.*
-import io.vertx.kotlin.core.json.*
-import org.intellij.lang.annotations.*
+import arrow.core.Either
+import arrow.core.Option
+import arrow.core.left
+import arrow.core.toOption
+import com.fasterxml.jackson.module.kotlin.readValue
+import com.tartner.vertx.AggregateEvent
+import com.tartner.vertx.AggregateId
+import com.tartner.vertx.AggregateSnapshot
+import com.tartner.vertx.ErrorReply
+import com.tartner.vertx.Reply
+import com.tartner.vertx.SuccessReply
+import com.tartner.vertx.VCommand
+import com.tartner.vertx.VEvent
+import com.tartner.vertx.codecs.TypedObjectMapper
+import com.tartner.vertx.commands.CommandFailedDueToException
+import com.tartner.vertx.commands.CommandRegistrar
+import com.tartner.vertx.commands.GeneralCommandFailure
+import com.tartner.vertx.cqrs.database.EventSourcingClientFactory
+import com.tartner.vertx.debugIf
+import com.tartner.vertx.functional.toLeft
+import com.tartner.vertx.functional.toRight
+import com.tartner.vertx.getConnectionA
+import com.tartner.vertx.queryWithParamsA
+import com.tartner.vertx.successReplyRight
+import com.tartner.vertx.updateWithParamsA
+import io.vertx.core.json.JsonArray
+import io.vertx.core.logging.LoggerFactory
+import io.vertx.ext.jdbc.JDBCClient
+import io.vertx.ext.sql.UpdateResult
+import io.vertx.kotlin.core.json.array
+import io.vertx.kotlin.core.json.json
+import io.vertx.kotlin.coroutines.CoroutineVerticle
+import org.intellij.lang.annotations.Language
 
 data class UnableToStoreAggregateEventsCommandFailure(override val message: String,
   val aggregateId: AggregateId, val events: List<VEvent>,
   val source: Either<*,*>? = null): GeneralCommandFailure
 
+data class LoadAggregateEventsCommand(val aggregateId: AggregateId, val aggregateVersion: Long): VCommand
+data class LoadAggregateEventsResponse(val aggregateId: AggregateId, val aggregateVersion: Long,
+  val events: List<AggregateEvent>): SuccessReply
+
+data class StoreAggregateEventsCommand(val aggregateId: AggregateId, val events: List<AggregateEvent>): VCommand
+data class StoreAggregateSnapshotCommand(val aggregateId: AggregateId, val snapshot: AggregateSnapshot): VCommand
+
 class EventSourcedAggregateDataVerticle(
   private val databaseClientFactory: EventSourcingClientFactory,
-  private val databaseMapper: TypedObjectMapper
+  private val databaseMapper: TypedObjectMapper,
+  private val commandRegistrar: CommandRegistrar
 // TODO: we have to finish out the cluster address scheme
-): DirectCallVerticle(EventSourcedAggregateDataVerticle::class.qualifiedName!!) {
+): CoroutineVerticle() {
 
   companion object {
     private const val valuesReplacementText = "***REPLACE_WITH_VALUES***"
 
     @Language("PostgreSQL")
-    private val selectSnapshotSqlRaw = """
+    private val selectSnapshotSql = """
       select data
-      from theSchema.snapshots
+      from event_sourcing.snapshots
       where aggregate_id = ?
       order by version_number desc
       limit 1""".trimIndent()
 
     @Language("PostgreSQL")
-    private val selectEventsSqlRaw = """
+    private val selectEventsSql = """
       select data
-      from theSchema.events
+      from event_sourcing.events
       where aggregate_id = ? and version_number >= ?
       order by version_number
       """.trimIndent()
 
     @Language("PostgreSQL")
-    private val insertEventsSqlRaw = """
-      insert into theSchema.events (aggregate_id, version_number, data)
+    private val insertEventsSql = """
+      insert into event_sourcing.events (aggregate_id, version_number, data)
       values $valuesReplacementText""".trimIndent()
 
     @Language("PostgreSQL")
-    private val insertSnapshotSqlRaw = """
+    private val insertSnapshotSql = """
       insert into event_sourcing.snapshots (aggregate_id, version_number, data)
       values (?, ?, cast(? as json))""".trimIndent()
   }
   private val log = LoggerFactory.getLogger(EventSourcedAggregateDataVerticle::class.java)
-
-  private lateinit var selectSnapshotSql: String
-  private lateinit var selectEventsSql: String
-  private lateinit var insertEventsSql: String
-  private lateinit var insertSnapshotSql: String
 
   private lateinit var databaseClient: JDBCClient
 
@@ -83,81 +105,95 @@ class EventSourcedAggregateDataVerticle(
     super.start()
     databaseClient = databaseClientFactory.create(vertx, config)
 
-    selectEventsSql = databaseClientFactory.replaceSchema(selectEventsSqlRaw)
-    selectSnapshotSql = databaseClientFactory.replaceSchema(selectSnapshotSqlRaw)
-    insertEventsSql = databaseClientFactory.replaceSchema(insertEventsSqlRaw)
-    insertSnapshotSql = databaseClientFactory.replaceSchema(insertSnapshotSqlRaw)
+    commandRegistrar.registerCommandHandler(this, LoadAggregateEventsCommand::class,
+      ::loadAggregateEvents)
+    commandRegistrar.registerCommandHandler(this, LoadLatestAggregateSnapshotCommand::class,
+      ::loadLatestAggregateSnapshot)
+    commandRegistrar.registerCommandHandler(this, StoreAggregateEventsCommand::class,
+      ::storeAggregateEvents)
+    commandRegistrar.registerCommandHandler(this, StoreAggregateSnapshotCommand::class,
+      ::storeAggregateSnapshot)
   }
 
-  suspend fun loadAggregateEvents(aggregateId: AggregateId, aggregateVersion: Long) = actAndReply {
+  suspend fun loadAggregateEvents(command: LoadAggregateEventsCommand, reply: Reply) {
     try {
       // TODO: error handling
       val connection = databaseClient.getConnectionA()
 
-      val parameters = json { array(aggregateId, aggregateVersion) }
+      val parameters = json { array(command.aggregateId, command.aggregateVersion) }
       log.debugIf { "Running event load sql: '$selectEventsSql' with parameters: $parameters" }
 
       val eventsResultSet = connection.queryWithParamsA(selectEventsSql, parameters)
 
       val results: List<JsonArray> = eventsResultSet.results
       val events = results.map { databaseMapper.readValue<AggregateEvent>(it.getString(0)) }
-      Either.Right(events)
+      reply(LoadAggregateEventsResponse(
+        command.aggregateId, command.aggregateVersion, events).toRight())
     } catch (ex: Throwable) {
-      CommandFailedDueToException(ex).createLeft()
+      reply(CommandFailedDueToException(ex).toLeft())
     }
   }
 
-  suspend fun loadLatestAggregateSnapshot(aggregateId: AggregateId) = actAndReply {
+  data class LoadLatestAggregateSnapshotCommand(val aggregateId: AggregateId): VCommand
+  data class LoadLatestAggregateSnapshotResponse(val aggregateId: AggregateId,
+    val possibleSnapshot: Option<AggregateSnapshot>): VCommand
+
+  suspend fun loadLatestAggregateSnapshot(command: LoadLatestAggregateSnapshotCommand, reply: Reply) {
     try {
       // TODO: error handling
       val connection = databaseClient.getConnectionA()
 
-      val parameters = json { array(aggregateId) }
+      val parameters = json { array(command.aggregateId) }
       log.debugIf { "Running snapshot load sql: '$selectSnapshotSql' with parameters: $parameters" }
       val snapshotResultSet =
         connection.queryWithParamsA(selectSnapshotSql, parameters)
 
       val results: List<JsonArray> = snapshotResultSet.results
-      val possibleSnapshot: AggregateSnapshot? = results.map {
-        databaseMapper.readValue<AggregateSnapshot>(it.getString(0)) }.firstOrNull()
-      Either.Right(possibleSnapshot)
+      val possibleSnapshot: Option<AggregateSnapshot> = results.map {
+        databaseMapper.readValue<AggregateSnapshot>(it.getString(0)) }.firstOrNull().toOption()
+      reply(LoadLatestAggregateSnapshotResponse(command.aggregateId, possibleSnapshot).toRight())
     } catch (ex: Throwable) {
-      CommandFailedDueToException(ex).createLeft()
+      reply(CommandFailedDueToException(ex).toLeft())
     }
   }
 
   // TODO: where do we put the retry logic? Here or a higher level? And should it be a
   // circuit breaker? (probably should)
-  suspend fun storeAggregateEvents(aggregateId: AggregateId, events: List<AggregateEvent>) =
-    actAndReply {
-      try {
-        val numberOfEvents = events.size
+  suspend fun storeAggregateEvents(command: StoreAggregateEventsCommand, reply: Reply) {
+    val events = command.events
+    try {
+      val numberOfEvents = events.size
 
-        val eventsValues = json {
-          array(events.flatMap({ event: AggregateEvent ->
-            val eventSerialized = databaseMapper.writeValueAsString(event)
-            listOf(event.aggregateId, event.aggregateVersion, eventSerialized)
-          }))
-        }
-        val eventsParametersText = "(?, ?, cast(? as json)), ".repeat(numberOfEvents).removeSuffix(", ")
-        val insertSql = insertEventsSql.replace(valuesReplacementText, eventsParametersText)
-        log.debugIf { "Insert Events SQL: ***\n$insertSql\n*** with parameters $eventsValues" }
-
-        val connection = databaseClient.getConnectionA()
-        val updateResult: UpdateResult = connection.updateWithParamsA(insertSql, eventsValues)
-        if (updateResult.updated != numberOfEvents) {
-          ErrorReply("""
-            The number of records updated (${updateResult.updated}) was not the same  as the number
-            of events ($numberOfEvents) for call""".trimIndent(), this::class).createLeft()
-        } else {
-          successReplyRight
-        }
-      } catch (ex: Throwable) {
-        CommandFailedDueToException(ex).createLeft()
+      val eventsValues = json {
+        array(events.flatMap({ event: AggregateEvent ->
+          val eventSerialized = databaseMapper.writeValueAsString(event)
+          listOf(event.aggregateId, event.aggregateVersion, eventSerialized)
+        }))
       }
-    }
+      val eventsParametersText = "(?, ?, cast(? as json)), ".repeat(numberOfEvents).removeSuffix(", ")
+      val insertSql = insertEventsSql.replace(valuesReplacementText, eventsParametersText)
+      log.debugIf { "Insert Events SQL: ***\n$insertSql\n*** with parameters $eventsValues" }
 
-  suspend fun storeAggregateSnapshot(snapshot: AggregateSnapshot) = actAndReply {
+      val connection = databaseClient.getConnectionA()
+      val updateResult: UpdateResult = connection.updateWithParamsA(insertSql, eventsValues)
+      if (updateResult.updated != numberOfEvents) {
+        val errorMessage = """
+          The number of records updated (${updateResult.updated}) was not the same  as the number
+          of events ($numberOfEvents) for call""".trimIndent()
+        log.debug(errorMessage)
+
+        reply(ErrorReply(errorMessage, this::class).left())
+      } else {
+        reply(successReplyRight)
+      }
+    } catch (ex: Throwable) {
+      reply(CommandFailedDueToException(ex))
+    }
+  }
+
+  suspend fun storeAggregateSnapshot(command: StoreAggregateSnapshotCommand, reply: Reply) {
+    val snapshot = command.snapshot
+
     try {
       val snapshotSerialized = databaseMapper.writeValueAsString(snapshot)
       val snapshotValues = json {
@@ -170,13 +206,13 @@ class EventSourcedAggregateDataVerticle(
       val updateResult: UpdateResult =
         connection.updateWithParamsA(insertSnapshotSql, snapshotValues)
       if (updateResult.updated == 0) {
-        ErrorReply("Unable to store aggregate snapshot for snapshot $snapshot", this::class)
-          .createLeft()
+        reply(
+          ErrorReply("Unable to store aggregate snapshot for snapshot $snapshot", this::class).left())
       } else {
-        successReplyRight
+        reply(successReplyRight)
       }
     } catch (ex: Throwable) {
-      CommandFailedDueToException(ex).createLeft()
+      reply(CommandFailedDueToException(ex).left())
     }
   }
 }
