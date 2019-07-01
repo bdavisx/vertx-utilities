@@ -23,6 +23,8 @@ import com.tartner.vertx.RouterVerticle
 import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandRegistrar
 import com.tartner.vertx.commands.CommandSender
+import com.tartner.vertx.cqrs.database.EventSourcingClientFactory
+import com.tartner.vertx.cqrs.eventsourcing.EventSourcedAggregateDataVerticle
 import com.tartner.vertx.events.EventPublisher
 import com.tartner.vertx.events.EventRegistrar
 import io.vertx.core.Vertx
@@ -35,7 +37,7 @@ import org.kodein.di.generic.bind
 import org.kodein.di.generic.provider
 import org.kodein.di.generic.singleton
 
-fun vertxKodeinModule(vertx: Vertx) = Kodein.Module("vertxKodeinModule") {
+fun vertxUtilitiesModule(vertx: Vertx) = Kodein.Module("vertxUtilitiesModule") {
   bind<Kodein>() with provider { kodein }
 
   bind<Vertx>() with singleton { vertx }
@@ -53,6 +55,7 @@ fun vertxKodeinModule(vertx: Vertx) = Kodein.Module("vertxKodeinModule") {
   bind<EventRegistrar>() with singleton { EventRegistrar(i(), i()) }
 
   bind<KodeinVerticleFactoryVerticle>() with singleton { KodeinVerticleFactoryVerticle(kodein.direct, i(), i(), i()) }
+  bind<EventSourcedAggregateDataVerticle>() with singleton { EventSourcedAggregateDataVerticle(i(), i(), i()) }
 
   bind<RandomGenerator>() with singleton { RandomGenerator() }
   bind<IdGenerator>() with singleton { i<RandomGenerator>()::generateId }

@@ -18,7 +18,8 @@ package com.tartner.vertx.cqrs.database
 
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
-import io.vertx.ext.jdbc.JDBCClient
+import io.vertx.ext.asyncsql.AsyncSQLClient
+import io.vertx.ext.asyncsql.PostgreSQLClient
 import org.kodein.di.Kodein
 import org.kodein.di.generic.bind
 import org.kodein.di.generic.singleton
@@ -34,7 +35,7 @@ import org.kodein.di.generic.singleton
 */
 
 interface JDBCClientFactory {
-  fun create(vertx: Vertx, configuration: JsonObject): JDBCClient
+  fun create(vertx: Vertx, configuration: JsonObject): AsyncSQLClient
   fun replaceSchema(sql: String): String
 }
 
@@ -57,43 +58,50 @@ abstract class AbstractJDBCClientFactory(private val schema: String): JDBCClient
   override fun replaceSchema(sql: String): String {
     return sql.replace(valueToReplace, schema)
   }
+
+  protected fun createClient(vertx: Vertx, configuration: JsonObject, environmentNamePrefix: String,
+    clientName: String): AsyncSQLClient {
+
+    val databaseConfiguration = createDatabaseConfiguration(configuration, environmentNamePrefix)
+
+    val client = PostgreSQLClient.createShared(vertx, databaseConfiguration, environmentNamePrefix)
+    if (client == null) {
+
+    }
+
+    return client
+  }
+
+  private fun createDatabaseConfiguration(configuration: JsonObject,
+    environmentNamePrefix: String): JsonObject? {
+    return JsonObject()
+      .put("url", configurationValue(configuration, environmentNamePrefix, "URL"))
+      .put("driver_class", configurationValue(configuration, environmentNamePrefix, "Class"))
+      .put("user", configurationValue(configuration, environmentNamePrefix, "UserId"))
+      .put("password", configurationValue(configuration, environmentNamePrefix, "Pasword"))
+  }
+
+  private fun configurationValue(mainConfiguration: JsonObject, environmentNamePrefix: String,
+    value: String) = mainConfiguration.getValue(prepend(environmentNamePrefix, value))
+
+  private fun prepend(pre: String, value: String) = StringBuilder(pre).append(value).toString()
 }
 
 class AuthenticationJDBCClientFactory: AbstractJDBCClientFactory("query_model"),
   AuthenticationClientFactory {
-  override fun create(vertx: Vertx, configuration: JsonObject): JDBCClient = createClient(vertx,
-    configuration, "DATABASE_QUERY_MODEL_", "Authentication")
+  override fun create(vertx: Vertx, configuration: JsonObject): AsyncSQLClient =
+    createClient(vertx, configuration, "DATABASE_QUERY_MODEL_", "Authentication")
 }
 
 class EventSourcingJDBCClientFactory: AbstractJDBCClientFactory("event_sourcing"),
   EventSourcingClientFactory {
-  override fun create(vertx: Vertx, configuration: JsonObject): JDBCClient = createClient(vertx,
-    configuration, "DATABASE_EVENT_SOURCING_", "EventSourcing")
+  override fun create(vertx: Vertx, configuration: JsonObject): AsyncSQLClient =
+    createClient(vertx, configuration, "databaseEventSourcing", "EventSourcing")
 }
 
 class QueryModelJDBCClientFactory: AbstractJDBCClientFactory("query_model"),
   QueryModelClientFactory {
-  override fun create(vertx: Vertx, configuration: JsonObject): JDBCClient = createClient(vertx,
-    configuration, "DATABASE_QUERY_MODEL_", "QueryModel")
+  override fun create(vertx: Vertx, configuration: JsonObject): AsyncSQLClient =
+    createClient(vertx, configuration, "DATABASE_QUERY_MODEL_", "QueryModel")
 }
 
-private fun createClient(vertx: Vertx, configuration: JsonObject, environmentNamePrefix: String,
-  clientName: String): JDBCClient {
-
-  val databaseConfiguration = createDatabaseConfiguration(configuration, environmentNamePrefix)
-  return JDBCClient.createShared(vertx, databaseConfiguration, clientName)
-}
-
-private fun createDatabaseConfiguration(configuration: JsonObject,
-  environmentNamePrefix: String): JsonObject? {
-  return JsonObject()
-    .put("url", configurationValue(configuration, environmentNamePrefix, "URL"))
-    .put("driver_class", configurationValue(configuration, environmentNamePrefix, "CLASS"))
-    .put("user", configurationValue(configuration, environmentNamePrefix, "USERID"))
-    .put("password", configurationValue(configuration, environmentNamePrefix, "PASSWORD"))
-}
-
-private fun configurationValue(mainConfiguration: JsonObject, environmentNamePrefix: String,
-  value: String) = mainConfiguration.getValue(prepend(environmentNamePrefix, value))
-
-private fun prepend(pre: String, value: String) = StringBuilder(pre).append(value).toString()

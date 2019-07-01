@@ -15,7 +15,6 @@
   ~ limitations under the License.
   ~
   -->
-
 <project xmlns="http://maven.apache.org/POM/4.0.0"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -114,6 +113,12 @@
             <artifactId>vertx-jdbc-client</artifactId>
             <version>${vertxVersion}</version>
         </dependency>
+        <dependency>
+            <groupId>io.vertx</groupId>
+            <artifactId>vertx-mysql-postgresql-client</artifactId>
+            <version>${vertxVersion}</version>
+        </dependency>
+
 
         <dependency>
             <groupId>org.slf4j</groupId>

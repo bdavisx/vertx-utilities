@@ -50,18 +50,18 @@ class CommandSenderTest {
 
     var receivedCommand: TestCommand? = null
     vertx.eventBus().consumer<TestCommand>(
-      TestCommand::class.qualifiedName, { message -> receivedCommand = message.body()
-    })
+      TestCommand::class.qualifiedName) { message -> receivedCommand = message.body()
+    }
 
     val command = TestCommand(1, "bdavisx@yahoo.com")
     val sender = dKodein.instance<CommandSender>()
     val context = vertx.getOrCreateContext()
     sender.send(command)
 
-    context.runOnContext({
+    context.runOnContext {
       com.natpryce.hamkrest.assertion.assertThat(receivedCommand, equalTo(command))
       async.complete()
-    })
+    }
   }
 }
 

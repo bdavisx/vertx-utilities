@@ -25,6 +25,7 @@ import io.vertx.core.Handler
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonArray
+import io.vertx.ext.asyncsql.AsyncSQLClient
 import io.vertx.ext.jdbc.JDBCClient
 import io.vertx.ext.sql.ResultSet
 import io.vertx.ext.sql.SQLConnection
@@ -59,7 +60,7 @@ suspend fun <T> awaitMessageEither(block: (
 class EitherFailureException(failureReply: FailureReply)
   : RuntimeException(failureReply.toString())
 
-suspend fun JDBCClient.getConnectionA() = awaitResult<SQLConnection> { this.getConnection(it) }
+suspend fun AsyncSQLClient.getConnectionA() = awaitResult<SQLConnection> { this.getConnection(it) }
 
 suspend fun SQLConnection.queryA(queryText: String): ResultSet =
   awaitResult { this.query(queryText, it) }
@@ -73,6 +74,3 @@ suspend fun SQLConnection.updateWithParamsA(queryText: String, params: JsonArray
 suspend fun SQLConnection.batchWithParamsA(queryText: String, params: List<JsonArray>): List<Int> =
   awaitResult { this.batchWithParams(queryText, params, it) }
 
-suspend fun <Failure: VSerializable, Success: VSerializable>
-  CommandSender.sendA(eventBus: EventBus, message: VSerializable)
-    : Message<Either<Failure, Success>> = awaitResult { this.send(message, it) }

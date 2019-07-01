@@ -40,10 +40,10 @@ import com.tartner.vertx.functional.toRight
 import com.tartner.vertx.getConnectionA
 import com.tartner.vertx.queryWithParamsA
 import com.tartner.vertx.successReplyRight
-import com.tartner.vertx.updateWithParamsA
+import com.tartner.vertx.*
 import io.vertx.core.json.JsonArray
 import io.vertx.core.logging.LoggerFactory
-import io.vertx.ext.jdbc.JDBCClient
+import io.vertx.ext.asyncsql.AsyncSQLClient
 import io.vertx.ext.sql.UpdateResult
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
@@ -61,11 +61,14 @@ data class LoadAggregateEventsResponse(val aggregateId: AggregateId, val aggrega
 data class StoreAggregateEventsCommand(val aggregateId: AggregateId, val events: List<AggregateEvent>): VCommand
 data class StoreAggregateSnapshotCommand(val aggregateId: AggregateId, val snapshot: AggregateSnapshot): VCommand
 
+data class LoadLatestAggregateSnapshotCommand(val aggregateId: AggregateId): VCommand
+data class LoadLatestAggregateSnapshotResponse(val aggregateId: AggregateId,
+  val possibleSnapshot: Option<AggregateSnapshot>): SuccessReply
+
 class EventSourcedAggregateDataVerticle(
   private val databaseClientFactory: EventSourcingClientFactory,
   private val databaseMapper: TypedObjectMapper,
   private val commandRegistrar: CommandRegistrar
-// TODO: we have to finish out the cluster address scheme
 ): CoroutineVerticle() {
 
   companion object {
@@ -99,7 +102,7 @@ class EventSourcedAggregateDataVerticle(
   }
   private val log = LoggerFactory.getLogger(EventSourcedAggregateDataVerticle::class.java)
 
-  private lateinit var databaseClient: JDBCClient
+  private lateinit var databaseClient: AsyncSQLClient
 
   override suspend fun start() {
     super.start()
@@ -115,7 +118,7 @@ class EventSourcedAggregateDataVerticle(
       ::storeAggregateSnapshot)
   }
 
-  suspend fun loadAggregateEvents(command: LoadAggregateEventsCommand, reply: Reply) {
+  private suspend fun loadAggregateEvents(command: LoadAggregateEventsCommand, reply: Reply) {
     try {
       // TODO: error handling
       val connection = databaseClient.getConnectionA()
@@ -134,11 +137,7 @@ class EventSourcedAggregateDataVerticle(
     }
   }
 
-  data class LoadLatestAggregateSnapshotCommand(val aggregateId: AggregateId): VCommand
-  data class LoadLatestAggregateSnapshotResponse(val aggregateId: AggregateId,
-    val possibleSnapshot: Option<AggregateSnapshot>): VCommand
-
-  suspend fun loadLatestAggregateSnapshot(command: LoadLatestAggregateSnapshotCommand, reply: Reply) {
+  private suspend fun loadLatestAggregateSnapshot(command: LoadLatestAggregateSnapshotCommand, reply: Reply) {
     try {
       // TODO: error handling
       val connection = databaseClient.getConnectionA()
@@ -159,16 +158,16 @@ class EventSourcedAggregateDataVerticle(
 
   // TODO: where do we put the retry logic? Here or a higher level? And should it be a
   // circuit breaker? (probably should)
-  suspend fun storeAggregateEvents(command: StoreAggregateEventsCommand, reply: Reply) {
+  private suspend fun storeAggregateEvents(command: StoreAggregateEventsCommand, reply: Reply) {
     val events = command.events
     try {
       val numberOfEvents = events.size
 
       val eventsValues = json {
-        array(events.flatMap({ event: AggregateEvent ->
+        array(events.flatMap { event: AggregateEvent ->
           val eventSerialized = databaseMapper.writeValueAsString(event)
           listOf(event.aggregateId, event.aggregateVersion, eventSerialized)
-        }))
+        })
       }
       val eventsParametersText = "(?, ?, cast(? as json)), ".repeat(numberOfEvents).removeSuffix(", ")
       val insertSql = insertEventsSql.replace(valuesReplacementText, eventsParametersText)
@@ -191,7 +190,7 @@ class EventSourcedAggregateDataVerticle(
     }
   }
 
-  suspend fun storeAggregateSnapshot(command: StoreAggregateSnapshotCommand, reply: Reply) {
+  private suspend fun storeAggregateSnapshot(command: StoreAggregateSnapshotCommand, reply: Reply) {
     val snapshot = command.snapshot
 
     try {

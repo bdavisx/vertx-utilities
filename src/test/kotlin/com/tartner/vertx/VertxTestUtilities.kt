@@ -20,11 +20,12 @@ package com.tartner.vertx
 import com.tartner.vertx.codecs.EventBusJacksonJsonCodec
 import com.tartner.vertx.commands.CommandRegistrar
 import com.tartner.vertx.commands.CommandSender
+import com.tartner.vertx.cqrs.database.databaseFactoryModule
 import com.tartner.vertx.events.EventPublisher
 import com.tartner.vertx.events.EventRegistrar
 import com.tartner.vertx.kodein.VerticleDeployer
 import com.tartner.vertx.kodein.i
-import com.tartner.vertx.kodein.vertxKodeinModule
+import com.tartner.vertx.kodein.vertxUtilitiesModule
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.EventBus
 import io.vertx.ext.unit.TestContext
@@ -44,7 +45,8 @@ fun setupVertxKodein(modules: Iterable<Kodein.Module>, vertx: Vertx, testContext
 
   vertx.exceptionHandler(testContext.exceptionHandler())
 
-  val modulesWithVertx = mutableListOf(vertxKodeinModule(vertx), testModule())
+  val modulesWithVertx =
+    mutableListOf(vertxUtilitiesModule(vertx), databaseFactoryModule, testModule())
 
   modulesWithVertx.addAll(modules)
   val dkodein = Kodein { modulesWithVertx.forEach { import(it) } }.direct
