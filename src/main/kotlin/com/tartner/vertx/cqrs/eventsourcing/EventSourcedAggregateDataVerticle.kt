@@ -29,6 +29,7 @@ import com.tartner.vertx.Reply
 import com.tartner.vertx.SuccessReply
 import com.tartner.vertx.VCommand
 import com.tartner.vertx.VEvent
+import com.tartner.vertx.batchWithParamsA
 import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandFailedDueToException
 import com.tartner.vertx.commands.CommandRegistrar
@@ -96,7 +97,7 @@ class EventSourcedAggregateDataVerticle(
     @Language("PostgreSQL")
     private val insertEventsSql = """
       insert into event_sourcing.events (aggregate_id, version_number, data)
-      values $valuesReplacementText""".trimIndent()
+      values ($1, $2, cast($3 as json))""".trimIndent()
 
     @Language("PostgreSQL")
     private val insertSnapshotSql = """
@@ -132,6 +133,7 @@ class EventSourcedAggregateDataVerticle(
       reply(LoadAggregateEventsResponse(command.aggregateId, command.aggregateVersion, events)
         .toRight())
     } catch (ex: Throwable) {
+      log.warn("Exception while trying to load Aggregate Events", ex)
       reply(CommandFailedDueToException(ex).toLeft())
     }
   }
@@ -150,6 +152,7 @@ class EventSourcedAggregateDataVerticle(
         databaseMapper.readValue<AggregateSnapshot>(it.getString(0)) }.firstOrNull().toOption()
       reply(LoadLatestAggregateSnapshotResponse(command.aggregateId, possibleSnapshot).toRight())
     } catch (ex: Throwable) {
+      log.warn("Exception while trying to load Aggregate Snapshot", ex)
       reply(CommandFailedDueToException(ex).toLeft())
     }
   }
@@ -162,29 +165,18 @@ class EventSourcedAggregateDataVerticle(
       val numberOfEvents = events.size
 
       val eventsValues =
-        ArrayTuple(events.flatMap { event: AggregateEvent ->
+        events.map { event: AggregateEvent ->
           val eventSerialized = databaseMapper.writeValueAsString(event)
-          listOf(event.aggregateId.id, event.aggregateVersion, eventSerialized)
-        })
-
-      val eventsParametersText = "(?, ?, cast(? as json)), ".repeat(numberOfEvents).removeSuffix(", ")
-      val insertSql = insertEventsSql.replace(valuesReplacementText, eventsParametersText)
-      log.debugIf { "Insert Events SQL: ***\n$insertSql\n*** with parameters $eventsValues" }
+          Tuple.of(event.aggregateId.id, event.aggregateVersion, eventSerialized)
+        }
 
       val connection = databasePool.getConnectionA()
-      val updateResult: SqlResult<List<Row>> = connection.updateWithParamsA(insertSql, eventsValues)
-      if (updateResult.rowCount() != numberOfEvents) {
-        val errorMessage = """
-          The number of records updated (${updateResult.rowCount()}) was not the same  as the number
-          of events ($numberOfEvents) for call""".trimIndent()
-        log.debug(errorMessage)
-
-        reply(ErrorReply(errorMessage, this::class).left())
-      } else {
-        reply(successReplyRight)
-      }
+      val updateResult: SqlResult<List<Row>> =
+        connection.batchWithParamsA(insertEventsSql, eventsValues)
+      reply(successReplyRight)
     } catch (ex: Throwable) {
-      reply(CommandFailedDueToException(ex))
+      log.warn("Exception while trying to store Aggregate Events", ex)
+      reply(CommandFailedDueToException(ex).left())
     }
   }
 
@@ -210,6 +202,7 @@ class EventSourcedAggregateDataVerticle(
         reply(successReplyRight)
       }
     } catch (ex: Throwable) {
+      log.warn("Exception while trying to store Aggregate Snapshot", ex)
       reply(CommandFailedDueToException(ex).left())
     }
   }

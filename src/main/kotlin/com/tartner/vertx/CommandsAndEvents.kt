@@ -51,6 +51,7 @@ data class AggregateId(val id: String)
 interface HasAggregateId { val aggregateId: AggregateId }
 interface HasAggregateVersion: HasAggregateId { val aggregateVersion: Long }
 
+interface AggregateCommand: VCommand, HasAggregateId
 interface AggregateEvent: VMessage, HasAggregateId, HasAggregateVersion
 
 interface HasComponentId { val componentId: String }
