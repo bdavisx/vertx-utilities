@@ -18,24 +18,20 @@
 package com.tartner.vertx
 
 import arrow.core.Either
-import com.tartner.vertx.commands.CommandSender
 import com.tartner.vertx.functional.toLeft
 import io.vertx.core.AsyncResult
 import io.vertx.core.Handler
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.eventbus.Message
-import io.vertx.core.json.JsonArray
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.awaitEvent
 import io.vertx.kotlin.coroutines.awaitResult
-import io.vertx.pgclient.PgPool
 import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.SqlConnection
 import io.vertx.sqlclient.SqlResult
 import io.vertx.sqlclient.Tuple
-import java.sql.ResultSet
 import java.util.stream.Collectors
 
 val CoroutineVerticle.eventBus: EventBus

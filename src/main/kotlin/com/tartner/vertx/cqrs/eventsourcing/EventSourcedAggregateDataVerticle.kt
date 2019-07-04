@@ -16,7 +16,6 @@
 
 package com.tartner.vertx.cqrs.eventsourcing
 
-import arrow.core.Either
 import arrow.core.Option
 import arrow.core.left
 import arrow.core.toOption
@@ -28,12 +27,10 @@ import com.tartner.vertx.ErrorReply
 import com.tartner.vertx.Reply
 import com.tartner.vertx.SuccessReply
 import com.tartner.vertx.VCommand
-import com.tartner.vertx.VEvent
 import com.tartner.vertx.batchWithParamsA
 import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandFailedDueToException
 import com.tartner.vertx.commands.CommandRegistrar
-import com.tartner.vertx.commands.GeneralCommandFailure
 import com.tartner.vertx.cqrs.database.EventSourcingPool
 import com.tartner.vertx.debugIf
 import com.tartner.vertx.functional.toLeft
@@ -42,21 +39,11 @@ import com.tartner.vertx.getConnectionA
 import com.tartner.vertx.queryWithParamsA
 import com.tartner.vertx.successReplyRight
 import com.tartner.vertx.updateWithParamsA
-import io.vertx.core.json.JsonArray
 import io.vertx.core.logging.LoggerFactory
-import io.vertx.kotlin.core.json.array
-import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
-import io.vertx.sqlclient.SqlResult
 import io.vertx.sqlclient.Tuple
-import io.vertx.sqlclient.impl.ArrayTuple
 import org.intellij.lang.annotations.Language
-
-data class UnableToStoreAggregateEventsCommandFailure(override val message: String,
-  val aggregateId: AggregateId, val events: List<VEvent>,
-  val source: Either<*,*>? = null): GeneralCommandFailure
 
 data class LoadAggregateEventsCommand(val aggregateId: AggregateId, val aggregateVersion: Long): VCommand
 data class LoadAggregateEventsResponse(val aggregateId: AggregateId, val aggregateVersion: Long,
@@ -76,8 +63,6 @@ class EventSourcedAggregateDataVerticle(
 ): CoroutineVerticle() {
 
   companion object {
-    private const val valuesReplacementText = "***REPLACE_WITH_VALUES***"
-
     @Language("PostgreSQL")
     private val selectSnapshotSql = """
       select data
@@ -162,8 +147,6 @@ class EventSourcedAggregateDataVerticle(
   private suspend fun storeAggregateEvents(command: StoreAggregateEventsCommand, reply: Reply) {
     val events = command.events
     try {
-      val numberOfEvents = events.size
-
       val eventsValues =
         events.map { event: AggregateEvent ->
           val eventSerialized = databaseMapper.writeValueAsString(event)
@@ -171,8 +154,7 @@ class EventSourcedAggregateDataVerticle(
         }
 
       val connection = databasePool.getConnectionA()
-      val updateResult: SqlResult<List<Row>> =
-        connection.batchWithParamsA(insertEventsSql, eventsValues)
+      connection.batchWithParamsA(insertEventsSql, eventsValues)
       reply(successReplyRight)
     } catch (ex: Throwable) {
       log.warn("Exception while trying to store Aggregate Events", ex)

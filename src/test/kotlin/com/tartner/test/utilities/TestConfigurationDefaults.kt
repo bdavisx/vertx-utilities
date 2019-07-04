@@ -16,12 +16,13 @@
 
 package com.tartner.test.utilities
 
-import io.vertx.config.*
-import io.vertx.core.*
-import io.vertx.core.json.*
-import io.vertx.kotlin.config.*
-import io.vertx.kotlin.core.json.*
-import io.vertx.kotlin.coroutines.*
+import io.vertx.config.ConfigRetriever
+import io.vertx.core.Vertx
+import io.vertx.core.json.JsonObject
+import io.vertx.kotlin.config.configRetrieverOptionsOf
+import io.vertx.kotlin.config.configStoreOptionsOf
+import io.vertx.kotlin.core.json.jsonObjectOf
+import io.vertx.kotlin.coroutines.awaitResult
 
 // TODO: move this to tests, then use the -D below to run the app
 object TestConfigurationDefaults {

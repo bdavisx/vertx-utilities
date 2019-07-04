@@ -25,7 +25,6 @@ import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.kotlin.ext.web.api.contract.routerFactoryOptionsOf
 
 /** Note that there's no reply to this command, because the actual adding is done async. */
 data class AddRouteCommand(val handlerAddress: String, val route: String): VCommand
