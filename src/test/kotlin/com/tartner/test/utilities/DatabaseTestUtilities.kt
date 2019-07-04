@@ -16,23 +16,22 @@
 
 package com.tartner.test.utilities
 
-import com.tartner.vertx.cqrs.database.QueryModelClientFactory
+import com.tartner.vertx.cqrs.database.AbstractSchemaReplacePool
+import com.tartner.vertx.updateWithParamsA
 import io.vertx.core.Vertx
-import io.vertx.core.json.JsonArray
-import io.vertx.core.json.JsonObject
-import io.vertx.ext.sql.SQLConnection
-import io.vertx.ext.sql.UpdateResult
 import io.vertx.kotlin.coroutines.awaitResult
+import io.vertx.sqlclient.SqlConnection
+import io.vertx.sqlclient.Tuple
 
-class DatabaseTestUtilities(private val queryFactory: QueryModelClientFactory) {
-  suspend fun runUpdateSql(sql: String, parameters: JsonArray, vertx: Vertx,
-    configuration: JsonObject): Int {
+class DatabaseTestUtilities {
+  suspend fun runUpdateSql(sql: String, parameters: Tuple, vertx: Vertx): Int {
 
-    val connection = awaitResult<SQLConnection> { handler ->
-      val jdbcClient = queryFactory.create(vertx, configuration)
-      jdbcClient.getConnection(handler)
+    val connection = awaitResult<SqlConnection> { handler ->
+      val pool = AbstractSchemaReplacePool.createPool(vertx, System.getenv(), "databaseEventSourcing")
+      pool.getConnection(handler)
     }
-    val updateResult = awaitResult<UpdateResult> {connection.updateWithParams(sql, parameters, it)}
-    return updateResult.updated
+    val updateResult = connection.updateWithParamsA(sql, parameters)
+
+    return updateResult.rowCount()
   }
 }

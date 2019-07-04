@@ -23,7 +23,6 @@ import com.tartner.vertx.RouterVerticle
 import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandRegistrar
 import com.tartner.vertx.commands.CommandSender
-import com.tartner.vertx.cqrs.database.EventSourcingClientFactory
 import com.tartner.vertx.cqrs.eventsourcing.EventSourcedAggregateDataVerticle
 import com.tartner.vertx.events.EventPublisher
 import com.tartner.vertx.events.EventRegistrar

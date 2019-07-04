@@ -20,7 +20,6 @@ import arrow.core.Either
 import arrow.core.getOrElse
 import com.tartner.test.utilities.AbstractVertxTest
 import com.tartner.test.utilities.DatabaseTestUtilities
-import com.tartner.test.utilities.TestConfigurationDefaults
 import com.tartner.vertx.AggregateId
 import com.tartner.vertx.AggregateSnapshot
 import com.tartner.vertx.FailureReply
@@ -35,10 +34,12 @@ import io.vertx.config.ConfigRetriever
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.json.JsonObject
+import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.unit.junit.VertxUnitRunner
-import io.vertx.kotlin.core.json.JsonArray
 import io.vertx.kotlin.coroutines.awaitResult
 import io.vertx.kotlin.coroutines.dispatcher
+import io.vertx.sqlclient.Tuple
+import io.vertx.sqlclient.impl.ArrayTuple
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.junit.Test
@@ -49,6 +50,8 @@ import kotlin.system.measureTimeMillis
 
 @RunWith(VertxUnitRunner::class)
 class EventSourcedAggregateDataVerticleTest: AbstractVertxTest() {
+  private val log = LoggerFactory.getLogger(EventSourcedAggregateDataVerticleTest::class.java)
+
   @Test(timeout = 2500)
   fun snapshotInsertAndQuery(context: io.vertx.ext.unit.TestContext) {
     val async = context.async()
@@ -76,6 +79,7 @@ class EventSourcedAggregateDataVerticleTest: AbstractVertxTest() {
           val addResult = commandSender.sendA<FailureReply, SuccessReply>(
             StoreAggregateSnapshotCommand(aggregateId, snapshot))
 
+          log.debug(addResult.toString())
           context.assertTrue(addResult is Either.Right<*>)
 
           val loadResult = commandSender.sendA<FailureReply, SuccessReply>(
@@ -94,10 +98,10 @@ class EventSourcedAggregateDataVerticleTest: AbstractVertxTest() {
             }
           }
 
-          val databaseUtils: DatabaseTestUtilities = injector.i()
+          val databaseUtils = DatabaseTestUtilities()
           databaseUtils.runUpdateSql(
-            "delete from event_sourcing.snapshots where aggregate_id = ? and version_number = ?",
-            JsonArray(aggregateId, 1), vertx, configuration)
+            "delete from event_sourcing.snapshots where aggregate_id = $1 and version_number = $2",
+            Tuple.of(aggregateId.id, 1), vertx)
         }
 
         println("Total runtime without initialization $runtimeInMilliseconds")

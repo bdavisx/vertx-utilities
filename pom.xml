@@ -37,8 +37,7 @@
         <junit.version>4.12</junit.version>
 
         <kotlinCoroutinesVersion>1.1.0</kotlinCoroutinesVersion>
-        <vertxVersion>3.7.1</vertxVersion>
-        <scalaVersion>2.11</scalaVersion>
+        <vertxVersion>3.8.0-SNAPSHOT</vertxVersion>
         <jacksonVersion>2.9.8</jacksonVersion>
 
         <jmeVersion>3.1.0-stable</jmeVersion>
@@ -105,17 +104,12 @@
         </dependency>
         <dependency>
             <groupId>io.vertx</groupId>
-            <artifactId>vertx-sql-common</artifactId>
+            <artifactId>vertx-pg-client</artifactId>
             <version>${vertxVersion}</version>
         </dependency>
         <dependency>
             <groupId>io.vertx</groupId>
-            <artifactId>vertx-jdbc-client</artifactId>
-            <version>${vertxVersion}</version>
-        </dependency>
-        <dependency>
-            <groupId>io.vertx</groupId>
-            <artifactId>vertx-mysql-postgresql-client</artifactId>
+            <artifactId>vertx-sql-client</artifactId>
             <version>${vertxVersion}</version>
         </dependency>
 
@@ -336,6 +330,15 @@
     </build>
 
     <repositories>
+        <repository>
+            <id>vertx-sonatype</id>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+            <name>vertx-sonatype</name>
+            <url>https://oss.sonatype.org/content/repositories/snapshots/</url>
+        </repository>
+
         <repository>
             <id>kotlinx</id>
             <snapshots>

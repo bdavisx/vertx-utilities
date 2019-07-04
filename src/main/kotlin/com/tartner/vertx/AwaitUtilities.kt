@@ -25,14 +25,18 @@ import io.vertx.core.Handler
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.eventbus.Message
 import io.vertx.core.json.JsonArray
-import io.vertx.ext.asyncsql.AsyncSQLClient
-import io.vertx.ext.jdbc.JDBCClient
-import io.vertx.ext.sql.ResultSet
-import io.vertx.ext.sql.SQLConnection
-import io.vertx.ext.sql.UpdateResult
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.awaitEvent
 import io.vertx.kotlin.coroutines.awaitResult
+import io.vertx.pgclient.PgPool
+import io.vertx.sqlclient.Pool
+import io.vertx.sqlclient.Row
+import io.vertx.sqlclient.RowSet
+import io.vertx.sqlclient.SqlConnection
+import io.vertx.sqlclient.SqlResult
+import io.vertx.sqlclient.Tuple
+import java.sql.ResultSet
+import java.util.stream.Collectors
 
 val CoroutineVerticle.eventBus: EventBus
   get() = vertx.eventBus()
@@ -60,17 +64,21 @@ suspend fun <T> awaitMessageEither(block: (
 class EitherFailureException(failureReply: FailureReply)
   : RuntimeException(failureReply.toString())
 
-suspend fun AsyncSQLClient.getConnectionA() = awaitResult<SQLConnection> { this.getConnection(it) }
+suspend fun Pool.getConnectionA() = awaitResult<SqlConnection> { this.getConnection(it) }
 
-suspend fun SQLConnection.queryA(queryText: String): ResultSet =
+suspend fun SqlConnection.queryA(queryText: String): RowSet =
   awaitResult { this.query(queryText, it) }
 
-suspend fun SQLConnection.queryWithParamsA(queryText: String, params: JsonArray): ResultSet =
-  awaitResult { this.queryWithParams(queryText, params, it) }
+suspend fun SqlConnection.queryWithParamsA(queryText: String, params: Tuple): RowSet =
+  awaitResult { this.preparedQuery(queryText, params, it) }
 
-suspend fun SQLConnection.updateWithParamsA(queryText: String, params: JsonArray): UpdateResult =
-  awaitResult { this.updateWithParams(queryText, params, it) }
+suspend fun SqlConnection.updateWithParamsA(queryText: String, params: Tuple)
+  : SqlResult<List<Row>> = awaitResult {
+  this.preparedQuery(queryText, params, Collectors.toList(), it)
+}
 
-suspend fun SQLConnection.batchWithParamsA(queryText: String, params: List<JsonArray>): List<Int> =
-  awaitResult { this.batchWithParams(queryText, params, it) }
+suspend fun SqlConnection.batchWithParamsA(queryText: String, params: List<Tuple>)
+  : SqlResult<List<Row>> = awaitResult {
+  this.preparedBatch(queryText, params, Collectors.toList(), it)
+}
 

@@ -33,21 +33,24 @@ import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandFailedDueToException
 import com.tartner.vertx.commands.CommandRegistrar
 import com.tartner.vertx.commands.GeneralCommandFailure
-import com.tartner.vertx.cqrs.database.EventSourcingClientFactory
+import com.tartner.vertx.cqrs.database.EventSourcingPool
 import com.tartner.vertx.debugIf
 import com.tartner.vertx.functional.toLeft
 import com.tartner.vertx.functional.toRight
 import com.tartner.vertx.getConnectionA
 import com.tartner.vertx.queryWithParamsA
 import com.tartner.vertx.successReplyRight
-import com.tartner.vertx.*
+import com.tartner.vertx.updateWithParamsA
 import io.vertx.core.json.JsonArray
 import io.vertx.core.logging.LoggerFactory
-import io.vertx.ext.asyncsql.AsyncSQLClient
-import io.vertx.ext.sql.UpdateResult
 import io.vertx.kotlin.core.json.array
 import io.vertx.kotlin.core.json.json
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.sqlclient.Row
+import io.vertx.sqlclient.RowSet
+import io.vertx.sqlclient.SqlResult
+import io.vertx.sqlclient.Tuple
+import io.vertx.sqlclient.impl.ArrayTuple
 import org.intellij.lang.annotations.Language
 
 data class UnableToStoreAggregateEventsCommandFailure(override val message: String,
@@ -66,7 +69,7 @@ data class LoadLatestAggregateSnapshotResponse(val aggregateId: AggregateId,
   val possibleSnapshot: Option<AggregateSnapshot>): SuccessReply
 
 class EventSourcedAggregateDataVerticle(
-  private val databaseClientFactory: EventSourcingClientFactory,
+  private val databasePool: EventSourcingPool,
   private val databaseMapper: TypedObjectMapper,
   private val commandRegistrar: CommandRegistrar
 ): CoroutineVerticle() {
@@ -78,7 +81,7 @@ class EventSourcedAggregateDataVerticle(
     private val selectSnapshotSql = """
       select data
       from event_sourcing.snapshots
-      where aggregate_id = ?
+      where aggregate_id = $1
       order by version_number desc
       limit 1""".trimIndent()
 
@@ -86,7 +89,7 @@ class EventSourcedAggregateDataVerticle(
     private val selectEventsSql = """
       select data
       from event_sourcing.events
-      where aggregate_id = ? and version_number >= ?
+      where aggregate_id = $1 and version_number >= $2
       order by version_number
       """.trimIndent()
 
@@ -98,15 +101,12 @@ class EventSourcedAggregateDataVerticle(
     @Language("PostgreSQL")
     private val insertSnapshotSql = """
       insert into event_sourcing.snapshots (aggregate_id, version_number, data)
-      values (?, ?, cast(? as json))""".trimIndent()
+      values ($1, $2, cast($3 as json))""".trimIndent()
   }
   private val log = LoggerFactory.getLogger(EventSourcedAggregateDataVerticle::class.java)
 
-  private lateinit var databaseClient: AsyncSQLClient
-
   override suspend fun start() {
     super.start()
-    databaseClient = databaseClientFactory.create(vertx, config)
 
     commandRegistrar.registerCommandHandler(this, LoadAggregateEventsCommand::class,
       ::loadAggregateEvents)
@@ -121,34 +121,32 @@ class EventSourcedAggregateDataVerticle(
   private suspend fun loadAggregateEvents(command: LoadAggregateEventsCommand, reply: Reply) {
     try {
       // TODO: error handling
-      val connection = databaseClient.getConnectionA()
+      val connection = databasePool.getConnectionA()
 
-      val parameters = json { array(command.aggregateId, command.aggregateVersion) }
+      val parameters = Tuple.of(command.aggregateId.id, command.aggregateVersion)
       log.debugIf { "Running event load sql: '$selectEventsSql' with parameters: $parameters" }
 
-      val eventsResultSet = connection.queryWithParamsA(selectEventsSql, parameters)
+      val eventsResultSet: RowSet = connection.queryWithParamsA(selectEventsSql, parameters)
 
-      val results: List<JsonArray> = eventsResultSet.results
-      val events = results.map { databaseMapper.readValue<AggregateEvent>(it.getString(0)) }
-      reply(LoadAggregateEventsResponse(
-        command.aggregateId, command.aggregateVersion, events).toRight())
+      val events = eventsResultSet.map { databaseMapper.readValue<AggregateEvent>(it.getString(0)) }
+      reply(LoadAggregateEventsResponse(command.aggregateId, command.aggregateVersion, events)
+        .toRight())
     } catch (ex: Throwable) {
       reply(CommandFailedDueToException(ex).toLeft())
     }
   }
 
-  private suspend fun loadLatestAggregateSnapshot(command: LoadLatestAggregateSnapshotCommand, reply: Reply) {
+  private suspend fun loadLatestAggregateSnapshot(command: LoadLatestAggregateSnapshotCommand,
+    reply: Reply) {
     try {
       // TODO: error handling
-      val connection = databaseClient.getConnectionA()
+      val connection = databasePool.getConnectionA()
 
-      val parameters = json { array(command.aggregateId) }
+      val parameters = Tuple.of(command.aggregateId.id)
       log.debugIf { "Running snapshot load sql: '$selectSnapshotSql' with parameters: $parameters" }
-      val snapshotResultSet =
-        connection.queryWithParamsA(selectSnapshotSql, parameters)
+      val snapshotResultSet = connection.queryWithParamsA(selectSnapshotSql, parameters)
 
-      val results: List<JsonArray> = snapshotResultSet.results
-      val possibleSnapshot: Option<AggregateSnapshot> = results.map {
+      val possibleSnapshot: Option<AggregateSnapshot> = snapshotResultSet.map {
         databaseMapper.readValue<AggregateSnapshot>(it.getString(0)) }.firstOrNull().toOption()
       reply(LoadLatestAggregateSnapshotResponse(command.aggregateId, possibleSnapshot).toRight())
     } catch (ex: Throwable) {
@@ -163,21 +161,21 @@ class EventSourcedAggregateDataVerticle(
     try {
       val numberOfEvents = events.size
 
-      val eventsValues = json {
-        array(events.flatMap { event: AggregateEvent ->
+      val eventsValues =
+        ArrayTuple(events.flatMap { event: AggregateEvent ->
           val eventSerialized = databaseMapper.writeValueAsString(event)
-          listOf(event.aggregateId, event.aggregateVersion, eventSerialized)
+          listOf(event.aggregateId.id, event.aggregateVersion, eventSerialized)
         })
-      }
+
       val eventsParametersText = "(?, ?, cast(? as json)), ".repeat(numberOfEvents).removeSuffix(", ")
       val insertSql = insertEventsSql.replace(valuesReplacementText, eventsParametersText)
       log.debugIf { "Insert Events SQL: ***\n$insertSql\n*** with parameters $eventsValues" }
 
-      val connection = databaseClient.getConnectionA()
-      val updateResult: UpdateResult = connection.updateWithParamsA(insertSql, eventsValues)
-      if (updateResult.updated != numberOfEvents) {
+      val connection = databasePool.getConnectionA()
+      val updateResult: SqlResult<List<Row>> = connection.updateWithParamsA(insertSql, eventsValues)
+      if (updateResult.rowCount() != numberOfEvents) {
         val errorMessage = """
-          The number of records updated (${updateResult.updated}) was not the same  as the number
+          The number of records updated (${updateResult.rowCount()}) was not the same  as the number
           of events ($numberOfEvents) for call""".trimIndent()
         log.debug(errorMessage)
 
@@ -195,16 +193,17 @@ class EventSourcedAggregateDataVerticle(
 
     try {
       val snapshotSerialized = databaseMapper.writeValueAsString(snapshot)
-      val snapshotValues = json {
-        array(snapshot.aggregateId, snapshot.aggregateVersion, snapshotSerialized)
-      }
+      val snapshotValues =
+        Tuple.of(snapshot.aggregateId.id, snapshot.aggregateVersion, snapshotSerialized)
 
-      log.debugIf {
-        "Insert Snapshot SQL: ***\n$insertSnapshotSql\n*** with parameters $snapshotValues" }
-      val connection = databaseClient.getConnectionA()
-      val updateResult: UpdateResult =
-        connection.updateWithParamsA(insertSnapshotSql, snapshotValues)
-      if (updateResult.updated == 0) {
+      log.debugIf {"Insert Snapshot SQL: ***\n$insertSnapshotSql\n*** with parameters $snapshotValues" }
+
+      val connection = databasePool.getConnectionA()
+
+      log.debugIf {"connection: $connection" }
+
+      val updateResult = connection.updateWithParamsA(insertSnapshotSql, snapshotValues)
+      if (updateResult.rowCount() == 0) {
         reply(
           ErrorReply("Unable to store aggregate snapshot for snapshot $snapshot", this::class).left())
       } else {
