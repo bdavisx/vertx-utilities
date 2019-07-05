@@ -143,7 +143,7 @@ class EventSourcedAggregateDataVerticle(
   }
 
   // TODO: where do we put the retry logic? Here or a higher level? And should it be a
-  // circuit breaker? (probably should)
+  //  circuit breaker? (probably should)
   private suspend fun storeAggregateEvents(command: StoreAggregateEventsCommand, reply: Reply) {
     val events = command.events
     try {
