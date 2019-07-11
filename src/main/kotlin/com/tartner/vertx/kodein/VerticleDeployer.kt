@@ -31,7 +31,7 @@ data class VerticleDeployment(val instance: Verticle, val deploymentId: String)
 class VerticleDeployer {
   private val log: Logger = LoggerFactory.getLogger(VerticleDeployer::class.java)
 
-  private val defaultConfig = JsonObject()
+  var defaultConfig: JsonObject = JsonObject()
 
   fun deployVerticles(vertx: Vertx, verticles: List<Verticle>)
     : List<Future<VerticleDeployment>> = deployVerticles(vertx, verticles, defaultConfig)

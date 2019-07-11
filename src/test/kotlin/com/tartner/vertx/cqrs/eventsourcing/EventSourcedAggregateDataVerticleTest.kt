@@ -137,7 +137,7 @@ class EventSourcedAggregateDataVerticleTest: AbstractVertxTest() {
 
           val events = mutableListOf<AggregateEvent>()
           var aggregateVersion: Long = 0
-          for (i in 1..1000) {
+          for (i in 1..10) {
             events.add(EventSourcedTestAggregateCreated(aggregateId, aggregateVersion++, "Name"))
             events.add(EventSourcedTestAggregateNameChanged(aggregateId, aggregateVersion++, "New Name"))
           }

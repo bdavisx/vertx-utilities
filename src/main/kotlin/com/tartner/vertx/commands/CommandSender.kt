@@ -54,7 +54,7 @@ class CommandSender(val eventBus: EventBus) {
 
   fun <T> send(command: Any, replyHandler: Handler<AsyncResult<Message<T>>>) {
     log.debugIf {"Sending command $command to ${command::class.qualifiedName} with reply"}
-    eventBus.send(command::class.qualifiedName, command, deliveryOptions, replyHandler)
+    eventBus.request(command::class.qualifiedName, command, deliveryOptions, replyHandler)
   }
 
   fun send(address: String, command: Any) {
@@ -64,11 +64,11 @@ class CommandSender(val eventBus: EventBus) {
 
   fun <T> send(address: String, command: Any, replyHandler: Handler<AsyncResult<Message<T>>>) {
     log.debugIf {"Sending command $command to $address with reply"}
-    eventBus.send(address, command, deliveryOptions, replyHandler)
+    eventBus.request(address, command, deliveryOptions, replyHandler)
   }
 
   fun reply(message: Message<*>, reply: Any) {
-    log.debugIf {"Replying $reply to $message"}
+    log.debugIf {"Replying $reply to ${message.body()}"}
     message.reply(reply, deliveryOptions)
   }
 

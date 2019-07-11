@@ -71,11 +71,6 @@
             <artifactId>kotlinx-coroutines-jdk8</artifactId>
             <version>${kotlinCoroutinesVersion}</version>
         </dependency>
-        <dependency>
-            <groupId>org.jetbrains.kotlinx</groupId>
-            <artifactId>kotlinx-collections-immutable</artifactId>
-            <version>0.1</version>
-        </dependency>
 
         <dependency>
             <groupId>io.vertx</groupId>
@@ -134,6 +129,12 @@
             <groupId>org.kodein.di</groupId>
             <artifactId>kodein-di-conf-jvm</artifactId>
             <version>${kodein.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.javimmutable</groupId>
+            <artifactId>javimmutable-collections</artifactId>
+            <version>2.4.1</version>
         </dependency>
 
         <dependency>

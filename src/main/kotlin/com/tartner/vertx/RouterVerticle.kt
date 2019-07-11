@@ -22,6 +22,7 @@ import com.tartner.vertx.events.EventRegistrar
 import com.tartner.vertx.kodein.PercentOfMaximumVerticleInstancesToDeploy
 import io.vertx.core.http.HttpServer
 import io.vertx.core.logging.LoggerFactory
+import io.vertx.ext.web.Route
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.kotlin.coroutines.CoroutineVerticle
@@ -66,7 +67,7 @@ class RouterVerticle(
 
   private fun subrouterAdded(event: SubrouterAdded) {
     log.debugIf {"SubrouterAdded event received - $event"}
-    val route = mainRouter.route().path(event.path)
+    val route: Route = mainRouter.route().path(event.path)
     route.handler { routingContext ->
       commandSender.send(event.handlerAddress, HandleSubrouterCallCommand(routingContext))
     }

@@ -29,6 +29,7 @@ import io.vertx.core.CompositeFuture
 import io.vertx.core.Verticle
 import io.vertx.core.impl.cpu.CpuCoreSensor
 import io.vertx.core.logging.LoggerFactory
+import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import org.kodein.di.DKodein
@@ -81,13 +82,20 @@ class KodeinVerticleFactoryVerticle(
   private val log = LoggerFactory.getLogger(KodeinVerticleFactoryVerticle::class.java)
 
   companion object {
-    val defaultMaximumInstancesToDeploy = CpuCoreSensor.availableProcessors()
+    const val numberOfVerticlesKey = "NumberOfVerticlesAt100Percent"
+
+    val defaultMaximumInstancesToDeploy = CpuCoreSensor.availableProcessors() * 50
   }
 
   private var maximumVerticleInstancesToDeploy: Int = defaultMaximumInstancesToDeploy
 
   override suspend fun start() {
     super.start()
+
+    if (config.containsKey(numberOfVerticlesKey)) {
+      maximumVerticleInstancesToDeploy = config.get<Double>(numberOfVerticlesKey).toInt()
+      log.debug("Setting maximumVerticleInstancesToDeploy from environment to $maximumVerticleInstancesToDeploy")
+    }
 
     commandRegistrar.registerCommandHandler(
       ConfigureMaximumNumberOfVerticleInstancesToDeployCommand::class, ::configureMaxInstances)
