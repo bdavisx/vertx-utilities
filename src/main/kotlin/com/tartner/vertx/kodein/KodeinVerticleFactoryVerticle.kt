@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 the original author or authors.
+ * Copyright (c) 2019 Bill Davis.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -32,6 +32,7 @@ import io.vertx.core.logging.LoggerFactory
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
+import kotlinx.coroutines.supervisorScope
 import org.kodein.di.DKodein
 import org.kodein.di.TT
 import kotlin.math.max
@@ -92,9 +93,10 @@ class KodeinVerticleFactoryVerticle(
   override suspend fun start() {
     super.start()
 
+    log.debugIf {"Initializing ${this.javaClass.name} with maximumVerticleInstancesToDeploy = $maximumVerticleInstancesToDeploy"}
     if (config.containsKey(numberOfVerticlesKey)) {
       maximumVerticleInstancesToDeploy = config.get<Double>(numberOfVerticlesKey).toInt()
-      log.debug("Setting maximumVerticleInstancesToDeploy from environment to $maximumVerticleInstancesToDeploy")
+      log.debugIf {"Setting maximumVerticleInstancesToDeploy from environment to $maximumVerticleInstancesToDeploy"}
     }
 
     commandRegistrar.registerCommandHandler(
@@ -153,6 +155,10 @@ class KodeinVerticleFactoryVerticle(
 
     log.debugIf { "Setting number of instances to ${numberOfInstances} for ${verticleClass.qualifiedName}" }
     return numberOfInstances
+  }
+
+  override fun toString(): String {
+    return "KodeinVerticleFactoryVerticle(maximumVerticleInstancesToDeploy=$maximumVerticleInstancesToDeploy,${super.toString()})"
   }
 }
 

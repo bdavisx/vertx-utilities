@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 the original author or authors.
+ * Copyright (c) 2019 Bill Davis.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,13 +51,13 @@ class CommandRegistrar(
   /** Registers a handler for T that is only local to this node. */
   fun <T: Any> registerCommandHandler(address: String, handler: MessageHandler<T>)
     : MessageConsumer<T> {
-    log.debugIf { "Registering command handler for address: $address" }
+    log.debugIf { "Registering command handler ($handler) for address: $address" }
     return eventBus.localConsumer<T>(address) { message -> handler(message.body()) }
   }
 
   fun <T: Any> registerCommandHandler(address: String, handler: ReplyMessageHandler<T>)
     : MessageConsumer<T> {
-    log.debugIf { "Registering command handler for address: $address" }
+    log.debugIf { "Registering command handler ($handler) for address: $address" }
     return eventBus.localConsumer<T>(address) {
       message -> handler(message.body()) { commandSender.reply(message, it) }
     }
@@ -74,17 +74,19 @@ class CommandRegistrar(
 //  New registration types: gets T and a MessageReply class. or just T or just reply or nothing.
 //  Get rid of the existing. For both suspendable and non.
 
-  fun <T: Any> registerCommandHandler(
-    scope: CoroutineScope, address: String, handler: SuspendableMessageHandler<T>)
-    : MessageConsumer<T> =
-      eventBus.localConsumer<T>(address) { message ->
+  fun <T: Any> registerCommandHandler(scope: CoroutineScope, address: String,
+    handler: SuspendableMessageHandler<T>): MessageConsumer<T> {
+      log.debugIf {"Registering coroutine command handler ($handler) for address $address in scope $scope"}
+      return eventBus.localConsumer<T>(address) { message ->
         scope.launch { handler(message.body()) }
       }
+  }
 
-  fun <T: Any> registerCommandHandler(
-    scope: CoroutineScope, address: String, handler: SuspendableReplyMessageHandler<T>)
-    : MessageConsumer<T> =
-      eventBus.localConsumer<T>(address) { message ->
-        scope.launch { handler(message.body()) { commandSender.reply(message, it) } }
-      }
+  fun <T: Any> registerCommandHandler(scope: CoroutineScope, address: String,
+    handler: SuspendableReplyMessageHandler<T>): MessageConsumer<T> {
+    log.debugIf {"Registering coroutine command handler ($handler) for address $address in scope $scope"}
+    return eventBus.localConsumer<T>(address) { message ->
+      scope.launch { handler(message.body()) { commandSender.reply(message, it) } }
+    }
+  }
 }

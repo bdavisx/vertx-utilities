@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 the original author or authors.
+ * Copyright (c) 2019 Bill Davis.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package com.tartner.vertx
 
 import com.tartner.vertx.codecs.EventBusJacksonJsonCodec
 import com.tartner.vertx.commands.CommandSender
+import com.tartner.vertx.cqrs.eventsourcing.EventSourcedAggregateDataVerticle
 import com.tartner.vertx.kodein.DeployVerticleInstancesCommand
 import com.tartner.vertx.kodein.DeployVerticleInstancesResponse
 import com.tartner.vertx.kodein.KodeinVerticleFactoryVerticle
@@ -47,7 +48,8 @@ suspend fun startLibrary(vertx: Vertx, kodein: DKodein) {
   val startupVerticlesLists =
     listOf (
       listOf(
-        RouterVerticle::class
+        RouterVerticle::class,
+        EventSourcedAggregateDataVerticle::class
       )
     )
 

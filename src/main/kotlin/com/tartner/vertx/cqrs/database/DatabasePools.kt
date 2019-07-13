@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 the original author or authors.
+ * Copyright (c) 2019 Bill Davis.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,7 +71,8 @@ abstract class AbstractSchemaReplacePool(private val pool: Pool, private val ini
       log.debugIf { "prefix: $environmentNamePrefix;  Config: $databaseConfiguration" }
 
       // Pool Options
-      val poolOptions = poolOptionsOf(maxSize = 5)
+      val maxPoolSize = environment.getOrDefault(environmentNamePrefix+"MaxPoolSize", "5").toInt()
+      val poolOptions = poolOptionsOf(maxSize = maxPoolSize)
 
       // Create the pool from the data object
       val pool = PgPool.pool(vertx, databaseConfiguration, poolOptions)

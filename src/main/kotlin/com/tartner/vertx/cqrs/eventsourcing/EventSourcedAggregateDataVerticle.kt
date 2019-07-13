@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 the original author or authors.
+ * Copyright (c) 2019 Bill Davis.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@ import com.tartner.vertx.updateWithParamsA
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.sqlclient.RowSet
+import io.vertx.sqlclient.SqlConnection
 import io.vertx.sqlclient.Tuple
 import org.intellij.lang.annotations.Language
 
@@ -105,9 +106,10 @@ class EventSourcedAggregateDataVerticle(
   }
 
   private suspend fun loadAggregateEvents(command: LoadAggregateEventsCommand, reply: Reply) {
+    var connection: SqlConnection? = null
     try {
       // TODO: error handling
-      val connection = databasePool.getConnectionA()
+      connection = databasePool.getConnectionA()
 
       val parameters = Tuple.of(command.aggregateId.id, command.aggregateVersion)
       log.debugIf { "Running event load sql: '$selectEventsSql' with parameters: $parameters" }
@@ -115,19 +117,23 @@ class EventSourcedAggregateDataVerticle(
       val eventsResultSet: RowSet = connection.queryWithParamsA(selectEventsSql, parameters)
 
       val events = eventsResultSet.map { databaseMapper.readValue<AggregateEvent>(it.getString(0)) }
+
       reply(LoadAggregateEventsResponse(command.aggregateId, command.aggregateVersion, events)
         .toRight())
     } catch (ex: Throwable) {
       log.warn("Exception while trying to load Aggregate Events", ex)
       reply(CommandFailedDueToException(ex).toLeft())
+    } finally {
+      connection?.close()
     }
   }
 
   private suspend fun loadLatestAggregateSnapshot(command: LoadLatestAggregateSnapshotCommand,
     reply: Reply) {
+    var connection: SqlConnection? = null
     try {
       // TODO: error handling
-      val connection = databasePool.getConnectionA()
+      connection = databasePool.getConnectionA()
 
       val parameters = Tuple.of(command.aggregateId.id)
       log.debugIf { "Running snapshot load sql: '$selectSnapshotSql' with parameters: $parameters" }
@@ -139,6 +145,8 @@ class EventSourcedAggregateDataVerticle(
     } catch (ex: Throwable) {
       log.warn("Exception while trying to load Aggregate Snapshot", ex)
       reply(CommandFailedDueToException(ex).toLeft())
+    } finally {
+      connection?.close()
     }
   }
 
@@ -146,6 +154,7 @@ class EventSourcedAggregateDataVerticle(
   //  circuit breaker? (probably should)
   private suspend fun storeAggregateEvents(command: StoreAggregateEventsCommand, reply: Reply) {
     val events = command.events
+    var connection: SqlConnection? = null
     try {
       val eventsValues =
         events.map { event: AggregateEvent ->
@@ -153,18 +162,21 @@ class EventSourcedAggregateDataVerticle(
           Tuple.of(event.aggregateId.id, event.aggregateVersion, eventSerialized)
         }
 
-      val connection = databasePool.getConnectionA()
+      connection = databasePool.getConnectionA()
       connection.batchWithParamsA(insertEventsSql, eventsValues)
       reply(successReplyRight)
     } catch (ex: Throwable) {
       log.warn("Exception while trying to store Aggregate Events", ex)
       reply(CommandFailedDueToException(ex).left())
+    } finally {
+      connection?.close()
     }
   }
 
   private suspend fun storeAggregateSnapshot(command: StoreAggregateSnapshotCommand, reply: Reply) {
     val snapshot = command.snapshot
 
+    var connection: SqlConnection? = null
     try {
       val snapshotSerialized = databaseMapper.writeValueAsString(snapshot)
       val snapshotValues =
@@ -172,9 +184,9 @@ class EventSourcedAggregateDataVerticle(
 
       log.debugIf {"Insert Snapshot SQL: ***\n$insertSnapshotSql\n*** with parameters $snapshotValues" }
 
-      val connection = databasePool.getConnectionA()
+      connection= databasePool.getConnectionA()
 
-      log.debugIf {"connection: $connection" }
+      log.debugIf {"connection: $connection"}
 
       val updateResult = connection.updateWithParamsA(insertSnapshotSql, snapshotValues)
       if (updateResult.rowCount() == 0) {
@@ -186,6 +198,8 @@ class EventSourcedAggregateDataVerticle(
     } catch (ex: Throwable) {
       log.warn("Exception while trying to store Aggregate Snapshot", ex)
       reply(CommandFailedDueToException(ex).left())
+    } finally {
+      connection?.close()
     }
   }
 }
