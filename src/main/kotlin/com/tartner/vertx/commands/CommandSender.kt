@@ -48,12 +48,12 @@ class CommandSender(val eventBus: EventBus) {
     .setSendTimeout(5000)
 
   fun send(command: Any) {
-    log.debugIf {"Sending command $command to ${command::class.qualifiedName}"}
+    log.debugIf {"Sending command $command to address ${command::class.qualifiedName}"}
     eventBus.send(command::class.qualifiedName, command, deliveryOptions)
   }
 
   fun <T> send(command: Any, replyHandler: Handler<AsyncResult<Message<T>>>) {
-    log.debugIf {"Sending command $command to ${command::class.qualifiedName} with reply"}
+    log.debugIf {"Sending command $command to address ${command::class.qualifiedName} with reply"}
     eventBus.request(command::class.qualifiedName, command, deliveryOptions, replyHandler)
   }
 
@@ -73,6 +73,6 @@ class CommandSender(val eventBus: EventBus) {
   }
 
   suspend fun <Failure: VSerializable, Success: VSerializable> sendA(command: Any)
-    : Either<Failure, Success> = awaitResult<Message<Either<Failure, Success>>> {
-    send(command, it) }.body()
+    : Either<Failure, Success>
+      = awaitResult<Message<Either<Failure, Success>>> { send(command, it) }.body()
 }

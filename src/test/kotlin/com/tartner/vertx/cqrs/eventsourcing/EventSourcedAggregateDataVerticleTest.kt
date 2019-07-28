@@ -23,6 +23,7 @@ import com.tartner.test.utilities.DatabaseTestUtilities
 import com.tartner.vertx.AggregateEvent
 import com.tartner.vertx.AggregateId
 import com.tartner.vertx.AggregateSnapshot
+import com.tartner.vertx.AggregateVersion
 import com.tartner.vertx.FailureReply
 import com.tartner.vertx.SuccessReply
 import com.tartner.vertx.commands.CommandRegistrar
@@ -75,7 +76,7 @@ class EventSourcedAggregateDataVerticleTest: AbstractVertxTest() {
 
         val runtimeInMilliseconds = measureTimeMillis {
           val aggregateId = AggregateId(UUID.randomUUID().toString())
-          val snapshot = TestSnapshot(aggregateId, 1, "This is test data")
+          val snapshot = TestSnapshot(aggregateId, AggregateVersion(1), "This is test data")
 
           val eventBus: EventBus = injector.i()
           val addResult = commandSender.sendA<FailureReply, SuccessReply>(
@@ -138,27 +139,36 @@ class EventSourcedAggregateDataVerticleTest: AbstractVertxTest() {
           val events = mutableListOf<AggregateEvent>()
           var aggregateVersion: Long = 0
           for (i in 1..10) {
-            events.add(EventSourcedTestAggregateCreated(aggregateId, aggregateVersion++, "Name"))
-            events.add(EventSourcedTestAggregateNameChanged(aggregateId, aggregateVersion++, "New Name"))
+            events.add(EventSourcedTestAggregateCreated(aggregateId, AggregateVersion(aggregateVersion++), "Name"))
+            events.add(EventSourcedTestAggregateNameChanged(aggregateId, AggregateVersion(aggregateVersion++), "New Name"))
           }
 
           val storeResult = commandSender.sendA<FailureReply, SuccessReply>(
             StoreAggregateEventsCommand(aggregateId, events))
 
-          context.assertTrue(storeResult is Either.Right)
-
-          val loadResult = commandSender.sendA<FailureReply, SuccessReply>(
-            LoadAggregateEventsCommand(aggregateId, Long.MIN_VALUE))
-
-          when (loadResult) {
-            is Either.Left -> context.fail(loadResult.a.toString())
+          when (storeResult) {
+            is Either.Left -> {
+              println(storeResult.a.toString())
+              context.fail(storeResult.a.toString())
+            }
             is Either.Right -> {
-              val loadedEvents = loadResult.b as LoadAggregateEventsResponse
-              if (loadedEvents.events.isEmpty()) {
-                context.fail("No events were returned")
-              }
+              val loadResult = commandSender.sendA<FailureReply, SuccessReply>(
+                LoadAggregateEventsCommand(aggregateId, Long.MIN_VALUE))
 
-              loadedEvents.events shouldBe events
+              when (loadResult) {
+                is Either.Left -> {
+                  println(loadResult.a.toString())
+                  context.fail(loadResult.a.toString())
+                }
+                is Either.Right -> {
+                  val loadedEvents = loadResult.b as LoadAggregateEventsResponse
+                  if (loadedEvents.events.isEmpty()) {
+                    context.fail("No events were returned")
+                  }
+
+                  loadedEvents.events shouldBe events
+                }
+              }
             }
           }
         }
@@ -173,5 +183,5 @@ class EventSourcedAggregateDataVerticleTest: AbstractVertxTest() {
   }
 }
 
-data class TestSnapshot(override val aggregateId: AggregateId, override val aggregateVersion: Long,
-  val testData: String): AggregateSnapshot
+data class TestSnapshot(override val aggregateId: AggregateId,
+  override val aggregateVersion: AggregateVersion, val testData: String): AggregateSnapshot

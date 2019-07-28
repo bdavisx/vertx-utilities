@@ -38,28 +38,24 @@ import org.kodein.di.generic.singleton
     will be the one for Querying.
 */
 
-class EventSourcingPool(pool: Pool, initialSchema: String, newSchema: String): AbstractSchemaReplacePool(pool, initialSchema, newSchema)
-class AuthenticationPool(pool: Pool, initialSchema: String, newSchema: String): AbstractSchemaReplacePool(pool, initialSchema, newSchema)
-class QueryModelPool(pool: Pool, initialSchema: String, newSchema: String): AbstractSchemaReplacePool(pool, initialSchema, newSchema)
+class EventSourcingPool(pool: Pool): AbstractPool(pool)
+class AuthenticationPool(pool: Pool): AbstractPool(pool)
+class QueryModelPool(pool: Pool): AbstractPool(pool)
 
 val databaseFactoryModule = Kodein.Module("databaseFactoryModule") {
   val environment: MutableMap<String, String> = System.getenv()
 
-  bind<AuthenticationPool>() with singleton { AuthenticationPool(
-    AbstractSchemaReplacePool.createPool(
-      i(), environment, "databaseQueryModel"), "query_model", "query_model") }
+  bind<AuthenticationPool>() with singleton { AuthenticationPool(AbstractPool.createPool(
+    i(), environment, "databaseQueryModel")) }
 
-  bind<EventSourcingPool>() with singleton { EventSourcingPool(
-    AbstractSchemaReplacePool.createPool(
-      i(), environment, "databaseEventSourcing"), "event_sourcing", "event_sourcing") }
+  bind<EventSourcingPool>() with singleton { EventSourcingPool(AbstractPool.createPool(
+    i(), environment, "databaseEventSourcing")) }
 
-  bind<QueryModelPool>() with singleton { QueryModelPool(
-    AbstractSchemaReplacePool.createPool(
-      i(), environment, "databaseQueryModel"), "query_model", "query_model") }
+  bind<QueryModelPool>() with singleton { QueryModelPool(AbstractPool.createPool(
+    i(), environment, "databaseQueryModel")) }
 }
 
-abstract class AbstractSchemaReplacePool(private val pool: Pool, private val initialSchema: String,
-  private val newSchema: String): Pool by pool {
+abstract class AbstractPool(private val pool: Pool): Pool by pool {
 
   companion object {
     val log = LoggerFactory.getLogger(EventSourcingPool::class.java)

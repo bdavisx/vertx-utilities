@@ -156,12 +156,13 @@ class EventSourcedAggregateDataVerticle(
     val events = command.events
     var connection: SqlConnection? = null
     try {
+      log.debugIf { "Getting ready to convert events to json" }
       val eventsValues =
         events.map { event: AggregateEvent ->
           val eventSerialized = databaseMapper.writeValueAsString(event)
-          Tuple.of(event.aggregateId.id, event.aggregateVersion, eventSerialized)
+          Tuple.of(event.aggregateId.id, event.aggregateVersion.version, eventSerialized)
         }
-
+      log.debugIf { "Events converted to Tuples for postgresql" }
       connection = databasePool.getConnectionA()
       connection.batchWithParamsA(insertEventsSql, eventsValues)
       reply(successReplyRight)
@@ -180,7 +181,7 @@ class EventSourcedAggregateDataVerticle(
     try {
       val snapshotSerialized = databaseMapper.writeValueAsString(snapshot)
       val snapshotValues =
-        Tuple.of(snapshot.aggregateId.id, snapshot.aggregateVersion, snapshotSerialized)
+        Tuple.of(snapshot.aggregateId.id, snapshot.aggregateVersion.version, snapshotSerialized)
 
       log.debugIf {"Insert Snapshot SQL: ***\n$insertSnapshotSql\n*** with parameters $snapshotValues" }
 

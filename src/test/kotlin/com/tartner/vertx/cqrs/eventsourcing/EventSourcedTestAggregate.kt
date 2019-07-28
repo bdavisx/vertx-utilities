@@ -19,6 +19,7 @@ package com.tartner.vertx.cqrs.eventsourcing
 import com.tartner.vertx.AggregateCommand
 import com.tartner.vertx.AggregateEvent
 import com.tartner.vertx.AggregateId
+import com.tartner.vertx.AggregateVersion
 
 sealed class TestEventSourcedAggregateCommands(): AggregateCommand
 sealed class TestEventSourcedAggregateEvents(): AggregateEvent
@@ -32,10 +33,12 @@ data class ChangeEventSourcedTestAggregateNameCommand(
   : TestEventSourcedAggregateCommands(), AggregateCommand
 
 data class EventSourcedTestAggregateCreated(override val aggregateId: AggregateId,
-  override val aggregateVersion: Long, val name: String): TestEventSourcedAggregateEvents()
+  override val aggregateVersion: AggregateVersion, val name: String)
+  : TestEventSourcedAggregateEvents()
 
 data class EventSourcedTestAggregateNameChanged(override val aggregateId: AggregateId,
-  override val aggregateVersion: Long, val name: String): TestEventSourcedAggregateEvents()
+  override val aggregateVersion: AggregateVersion, val name: String)
+  : TestEventSourcedAggregateEvents()
 
 //data class CreateEventSourcedTestAggregateValidationFailed(val validationIssues: ValidationIssues)
 //  : FailureReply

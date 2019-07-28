@@ -16,7 +16,7 @@
 
 package com.tartner.test.utilities
 
-import com.tartner.vertx.cqrs.database.AbstractSchemaReplacePool
+import com.tartner.vertx.cqrs.database.AbstractPool
 import com.tartner.vertx.updateWithParamsA
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.awaitResult
@@ -27,7 +27,7 @@ class DatabaseTestUtilities {
   suspend fun runUpdateSql(sql: String, parameters: Tuple, vertx: Vertx): Int {
 
     val connection = awaitResult<SqlConnection> { handler ->
-      val pool = AbstractSchemaReplacePool.createPool(vertx, System.getenv(), "databaseEventSourcing")
+      val pool = AbstractPool.createPool(vertx, System.getenv(), "databaseEventSourcing")
       pool.getConnection(handler)
     }
     val updateResult = connection.updateWithParamsA(sql, parameters)

@@ -46,27 +46,22 @@ interface VCommand: VMessage
 interface VQuery: VMessage
 interface VResponse: VMessage
 
-data class AggregateId(val id: String)
+data class AggregateId(val id: String): VSerializable
+data class AggregateVersion(val version: Long): Comparable<AggregateVersion>, VSerializable {
+  override fun compareTo(other: AggregateVersion): Int = version.compareTo(other.version)
+}
 
 interface HasAggregateId { val aggregateId: AggregateId }
-interface HasAggregateVersion: HasAggregateId { val aggregateVersion: Long }
+
+interface HasAggregateVersion: HasAggregateId, Comparable<HasAggregateVersion> {
+  val aggregateVersion: AggregateVersion
+
+  override fun compareTo(other: HasAggregateVersion): Int =
+    aggregateVersion.compareTo(other.aggregateVersion)
+}
 
 interface AggregateCommand: VCommand, HasAggregateId
 interface AggregateEvent: VMessage, HasAggregateId, HasAggregateVersion
 
-interface HasComponentId { val componentId: String }
-
-interface ComponentEvent: VEvent, HasComponentId
-
-interface ComponentSnapshot: ComponentEvent
-
 interface AggregateSnapshot: VSerializable, HasAggregateVersion
 
-interface SuccessReply: VMessage
-object DefaultSuccessReply: SuccessReply
-val successReplyRight = DefaultSuccessReply.toRight()
-
-interface FailureReply: VMessage
-data class ErrorReply(val message: String, val sourceClass: KClass<*>): FailureReply
-
-typealias SuccessOrFailure = Either<FailureReply, SuccessReply>

@@ -80,7 +80,7 @@ class VerticleDeployerTest {
   }
 }
 
-val testModule = Kodein.Module("VertxDeployerTestModule") {
+  val testModule = Kodein.Module("VertxDeployerTestModule") {
   bind<SimpleVerticle>() with provider { SimpleVerticle() }
   bind<MultipleDeploymentVerticle>() with factory {id: String -> MultipleDeploymentVerticle(id)}
 }

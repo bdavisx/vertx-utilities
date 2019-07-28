@@ -20,6 +20,7 @@ package com.tartner.utilities
 import java.util.UUID
 import java.util.concurrent.ThreadLocalRandom
 import kotlin.math.round
+import com.tartner.utilities.toStringFast
 
 class RandomGenerator() {
   private val random get() = ThreadLocalRandom.current()
