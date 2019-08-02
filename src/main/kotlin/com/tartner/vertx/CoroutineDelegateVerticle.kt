@@ -17,13 +17,83 @@
 package com.tartner.vertx
 
 import com.tartner.vertx.commands.CommandRegistrar
+import com.tartner.vertx.commands.CommandSender
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import kotlin.reflect.KClass
+
+interface CoroutineDelegate
+
+interface CommandHandlingCoroutineDelegate: CoroutineDelegate {
+  val commandHandlers: Map<KClass<*>, SuspendableMessageHandler<*>>; get() = emptyMap()
+  val commandWithReplyMessageHandlers: Map<KClass<*>, SuspendableMessageHandler<*>>; get() = emptyMap()
+}
+
+interface EventHandlingCoroutineDelegate: CoroutineDelegate {
+  val eventHandlers: Map<KClass<*>, SuspendableMessageHandler<*>>; get() = emptyMap()
+  val eventAddressHandlers: Map<String, SuspendableMessageHandler<*>>; get() = emptyMap()
+}
+
+interface APICoroutineDelegate: CoroutineDelegate {
+  val routeHandlers: Map<String, SuspendableMessageHandler<HandleSubrouterCallCommand>>; get() = emptyMap()
+}
+
+class CoroutineDelegateVerticleFactory(
+  private val commandRegistrar: CommandRegistrar,
+  private val commandSender: CommandSender,
+  private val eventRegistrar: CommandRegistrar
+) {
+  fun create(delegate: CoroutineDelegate) =
+    CoroutineDelegateVerticle(commandRegistrar, commandSender, eventRegistrar, delegate)
+}
 
 /**
  A verticle that is designed to take an object and delegate command and/or event handling to that
  object, while running in the vertx event loop system.
  */
-class EventSourcedAggregateDataVerticle(
+class CoroutineDelegateVerticle(
   private val commandRegistrar: CommandRegistrar,
-  private val eventRegistrar: CommandRegistrar
-): CoroutineVerticle() {}
+  private val commandSender: CommandSender,
+  private val eventRegistrar: CommandRegistrar,
+  private val delegate: CoroutineDelegate
+): CoroutineVerticle() {
+  override suspend fun start() {
+    if (delegate is CommandHandlingCoroutineDelegate) {
+      registerCommandHandlers(delegate)
+    }
+
+    if (delegate is EventHandlingCoroutineDelegate) {
+      registerEventHandlers(delegate)
+    }
+
+    if (delegate is APICoroutineDelegate) {
+      registerAPIHandlers(delegate)
+    }
+  }
+
+  private fun registerCommandHandlers(delegate: CommandHandlingCoroutineDelegate) {
+    delegate.commandHandlers.forEach { (commandClass, handler) ->
+      commandRegistrar.registerCommandHandler(this, commandClass, handler as SuspendableMessageHandler<Any>)
+    }
+
+    delegate.commandWithReplyMessageHandlers.forEach { (commandClass, handler) ->
+      commandRegistrar.registerCommandHandler(this, commandClass, handler as SuspendableReplyMessageHandler<Any>)
+    }
+  }
+
+  private fun registerEventHandlers(delegate: EventHandlingCoroutineDelegate) {
+    delegate.eventHandlers.forEach { (commandClass, handler) ->
+      eventRegistrar.registerCommandHandler(this, commandClass, handler as SuspendableMessageHandler<Any>)
+    }
+
+    delegate.eventAddressHandlers.forEach { (commandClass, handler) ->
+      commandRegistrar.registerCommandHandler(this, commandClass, handler as SuspendableMessageHandler<Any>)
+    }
+  }
+
+  private fun registerAPIHandlers(delegate: APICoroutineDelegate) {
+    delegate.routeHandlers.forEach { (route, handler) ->
+      commandRegistrar.registerCommandHandler(this, route, handler)
+      commandSender.send(AddRouteCommand(route, route))
+    }
+  }
+}

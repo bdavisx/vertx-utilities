@@ -17,10 +17,7 @@
 
 package com.tartner.vertx
 
-import arrow.core.Either
 import com.fasterxml.jackson.annotation.JsonTypeInfo
-import com.tartner.vertx.functional.toRight
-import kotlin.reflect.KClass
 
 // MUSTFIX: Docs for these interfaces
 

@@ -17,6 +17,9 @@
 
 package com.tartner.vertx.kodein
 
+import com.tartner.vertx.CoroutineDelegate
+import com.tartner.vertx.CoroutineDelegateVerticle
+import com.tartner.vertx.CoroutineDelegateVerticleFactory
 import com.tartner.vertx.Reply
 import com.tartner.vertx.RouterVerticle
 import com.tartner.vertx.VCommand
@@ -26,13 +29,11 @@ import com.tartner.vertx.commands.CommandRegistrar
 import com.tartner.vertx.debugIf
 import com.tartner.vertx.events.EventPublisher
 import io.vertx.core.CompositeFuture
-import io.vertx.core.Verticle
 import io.vertx.core.impl.cpu.CpuCoreSensor
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
-import kotlinx.coroutines.supervisorScope
 import org.kodein.di.DKodein
 import org.kodein.di.TT
 import kotlin.math.max
@@ -48,10 +49,6 @@ annotation class PercentOfMaximumVerticleInstancesToDeploy(val percent: Short)
 @MustBeDocumented
 annotation class SpecificNumberOfVerticleInstancesToDeploy(val count: Int)
 
-@Target(AnnotationTarget.CLASS)
-@MustBeDocumented
-annotation class DependsOnVerticleClasses(val dependencies: Array<KClass<*>>)
-
 /**
  Configures maximum # to deploy for each call to the factory, not the overall maximum for the
  system.
@@ -63,13 +60,15 @@ data class ConfigureMaximumNumberOfVerticleInstancesToDeployCommand(val maximumN
 data class MaximumNumberOfVerticleInstancesToDeployConfiguredEvent(val maximumNumber: Int):
   VEvent
 
-data class DeployVerticleInstancesCommand<T: CoroutineVerticle>(val verticleClass: KClass<T>):
-  VCommand
-data class DeployVerticleInstancesResponse(val verticleDeployments: List<VerticleDeployment>):
-  VResponse
+data class DeployVerticleInstancesCommand<T: CoroutineVerticle>(val verticleClass: KClass<T>): VCommand
+data class DeployVerticleDelegatesCommand<T: CoroutineDelegate>(val delegateClass: KClass<T>): VCommand
+data class DeployVerticleInstancesResponse(val verticleDeployments: List<VerticleDeployment>): VResponse
 
 data class VerticleInstancesDeployedEvent(
   val verticleClass: KClass<*>, val numberOfInstancesDeployed: Int): VEvent
+
+data class VerticleDelegateInstancesDeployedEvent(
+  val delegateClass: KClass<*>, val numberOfInstancesDeployed: Int): VEvent
 
 /**
 * We need to create a certain # of verticles that are deployed based on the annotations above.
@@ -78,7 +77,8 @@ class KodeinVerticleFactoryVerticle(
   private val kodein: DKodein,
   private val commandRegistrar: CommandRegistrar,
   private val eventPublisher: EventPublisher,
-  private val verticleDeployer: VerticleDeployer
+  private val verticleDeployer: VerticleDeployer,
+  private val coroutineDelegateVerticleFactory: CoroutineDelegateVerticleFactory
 ): CoroutineVerticle() {
   private val log = LoggerFactory.getLogger(KodeinVerticleFactoryVerticle::class.java)
 
@@ -104,6 +104,8 @@ class KodeinVerticleFactoryVerticle(
 
     commandRegistrar.registerCommandHandler(this, DeployVerticleInstancesCommand::class,
       ::deployVerticles)
+    commandRegistrar.registerCommandHandler(this, DeployVerticleDelegatesCommand::class,
+      ::deployVerticleDelegate)
   }
 
   private suspend fun deployVerticles(command: DeployVerticleInstancesCommand<*>, reply: Reply) {
@@ -131,6 +133,32 @@ class KodeinVerticleFactoryVerticle(
     reply(response)
   }
 
+  private suspend fun deployVerticleDelegate(command: DeployVerticleDelegatesCommand<*>, reply: Reply) {
+    val delegateClass = command.delegateClass
+    val verticleClass = CoroutineDelegateVerticle::class
+
+    log.debugIf { "Attempting to create the verticle delegate class: ${delegateClass.qualifiedName}" }
+
+    val numberOfInstances: Int = determineNumberOfVerticleInstances(delegateClass)
+
+    val delegates: List<CoroutineDelegate> = (1..numberOfInstances).map {
+      kodein.AllProviders(TT(delegateClass)).first().invoke() }
+
+    val verticles: List<CoroutineDelegateVerticle> = delegates.map {
+      coroutineDelegateVerticleFactory.create(it) }
+
+    log.debug("Deploying $numberOfInstances instances of CoroutineDelegateVerticle for ${delegateClass.qualifiedName}")
+
+    val deploymentFutures = verticleDeployer.deployVerticles(vertx, verticles)
+    CompositeFuture.all(deploymentFutures).await()
+
+    eventPublisher.publish(VerticleInstancesDeployedEvent(verticleClass, numberOfInstances))
+    eventPublisher.publish(VerticleDelegateInstancesDeployedEvent(delegateClass, numberOfInstances))
+
+    val response = DeployVerticleInstancesResponse(deploymentFutures.map { it.result() })
+    reply(response)
+  }
+
   private fun configureMaxInstances(
     command: ConfigureMaximumNumberOfVerticleInstancesToDeployCommand) {
     log.debugIf { "Changing instances to deploy: old#: $maximumVerticleInstancesToDeploy; new# = ${command.maximumNumber}" }
@@ -138,7 +166,7 @@ class KodeinVerticleFactoryVerticle(
     eventPublisher.publish(MaximumNumberOfVerticleInstancesToDeployConfiguredEvent(command.maximumNumber))
   }
 
-  private fun <T: Verticle> determineNumberOfVerticleInstances(verticleClass: KClass<T>): Int {
+  private fun determineNumberOfVerticleInstances(verticleClass: KClass<*>): Int {
     val percentageAnnotation = verticleClass.findAnnotation<PercentOfMaximumVerticleInstancesToDeploy>()
     val numberOfInstances: Int = if (percentageAnnotation != null) {
       val calculatedInstances =
@@ -146,11 +174,7 @@ class KodeinVerticleFactoryVerticle(
       max(1, calculatedInstances)
     } else {
       val countAnnotation = verticleClass.findAnnotation<SpecificNumberOfVerticleInstancesToDeploy>()
-      if (countAnnotation != null) {
-        countAnnotation.count
-      } else {
-        1
-      }
+      countAnnotation?.count ?: 1
     }
 
     log.debugIf { "Setting number of instances to ${numberOfInstances} for ${verticleClass.qualifiedName}" }
