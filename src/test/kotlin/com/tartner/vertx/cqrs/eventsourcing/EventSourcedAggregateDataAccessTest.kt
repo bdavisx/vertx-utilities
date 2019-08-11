@@ -40,7 +40,6 @@ import io.mockk.verifyAll
 import io.vertx.core.AsyncResult
 import io.vertx.core.Handler
 import io.vertx.core.logging.Logger
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.SqlConnection
 import io.vertx.sqlclient.SqlResult
@@ -55,30 +54,30 @@ data class TestSnapshot(override val aggregateId: AggregateId,
   override val aggregateVersion: AggregateVersion, val testData: String): AggregateSnapshot
 
 class EventSourcedAggregateDataAccessTest() {
-  private val log = LoggerFactory.getLogger(EventSourcedAggregateDataAccessTest::class.java)
+  val databasePool: EventSourcingPool = mockk()
+  val databaseMapper: TypedObjectMapper = mockk()
+  val reply: Reply = mockk()
+  val connection: SqlConnection = mockk()
+
+  val log: Logger = mockk()
+
+  val verticle: EventSourcedAggregateDataAccess =
+    EventSourcedAggregateDataAccess(databasePool, databaseMapper, log)
+
+  val aggregateId = AggregateId(UUID.randomUUID().toString())
+  val aggregateVersion = AggregateVersion(1)
+
+  val testSnapshot = TestSnapshot(aggregateId, aggregateVersion, "This is test data")
 
   @Test
   fun storeAggregateSnapshot() {
     runBlocking {
-      val databasePool: EventSourcingPool = mockk()
-      val databaseMapper: TypedObjectMapper = mockk()
-      val reply: Reply = mockk()
-      val connection: SqlConnection = mockk()
-
-      val log: Logger = mockk()
-
-      val verticle: EventSourcedAggregateDataAccess =
-        EventSourcedAggregateDataAccess(databasePool, databaseMapper, log)
-
-      val aggregateId = AggregateId(UUID.randomUUID().toString())
-      val aggregateVersion = AggregateVersion(1)
-      val snapshot = TestSnapshot(aggregateId, aggregateVersion, "This is test data")
 
       val json = """{ "key": "value" }"""
       val expectedTuple = Tuple.of(aggregateId.id, aggregateVersion.version, json)
       val sqlResult: SqlResult<List<Row>> = mockk()
 
-      every { databaseMapper.writeValueAsString(snapshot) } returns json
+      every { databaseMapper.writeValueAsString(testSnapshot) } returns json
       every { log.isDebugEnabled } returns true
       every { log.debug(any()) } returns Unit
       every { connection.toString() } returns "Hello"
@@ -100,12 +99,12 @@ class EventSourcedAggregateDataAccessTest() {
       every { reply(capture(replySlot)) } answers {Unit}
       every { connection.close() } answers {Unit}
 
-      verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, snapshot), reply)
+      verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
 
       replySlot.captured shouldBe successReplyRight
 
       verifyAll {
-        databaseMapper.writeValueAsString(snapshot)
+        databaseMapper.writeValueAsString(testSnapshot)
         databasePool.getConnection(any())
         connection.toString()
         connection.preparedQuery(any(), expectedTuple, any<Collector<Row,*,List<Row>>>(), any())
@@ -118,22 +117,13 @@ class EventSourcedAggregateDataAccessTest() {
   @Test
   fun storeAggregateSnapshotConnectionFail() {
     runBlocking {
-      val databasePool: EventSourcingPool = mockk()
-      val databaseMapper: TypedObjectMapper = mockk()
-      val reply: Reply = mockk()
-
-      val verticle: EventSourcedAggregateDataAccess =
-        EventSourcedAggregateDataAccess(databasePool, databaseMapper)
-
-      val aggregateId = AggregateId(UUID.randomUUID().toString())
-      val aggregateVersion = AggregateVersion(1)
-      val snapshot = TestSnapshot(aggregateId, aggregateVersion, "This is test data")
 
       val json = """{ "key": "value" }"""
       val expectedTuple = Tuple.of(aggregateId.id, aggregateVersion.version, json)
       val sqlResult: SqlResult<List<Row>> = mockk()
 
-      every { databaseMapper.writeValueAsString(snapshot) } returns json
+      every { databaseMapper.writeValueAsString(testSnapshot) } returns json
+      every { log.isDebugEnabled } returns true
 
       val getConnectionSlot = slot<Handler<AsyncResult<SqlConnection>>>()
       val expectedException = RuntimeException("Expected")
@@ -141,15 +131,18 @@ class EventSourcedAggregateDataAccessTest() {
         getConnectionSlot.captured.handle(CommandResponse.failure(expectedException))
       }
 
+      every { log.debug(any()) } returns Unit
+      every { log.warn(any(), expectedException) } returns Unit
+
       val replySlot = slot<Any>()
       every { reply(capture(replySlot)) } answers {Unit}
 
-      verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, snapshot), reply)
+      verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
 
       replySlot.captured shouldBe CommandFailedDueToException(expectedException).left()
 
       verifyAll {
-        databaseMapper.writeValueAsString(snapshot)
+        databaseMapper.writeValueAsString(testSnapshot)
         databasePool.getConnection(any())
       }}
   }
@@ -157,25 +150,12 @@ class EventSourcedAggregateDataAccessTest() {
   @Test
   fun storeAggregateSnapshotNoRecordsUpdated() {
     runBlocking {
-      val databasePool: EventSourcingPool = mockk()
-      val databaseMapper: TypedObjectMapper = mockk()
-      val reply: Reply = mockk()
-      val connection: SqlConnection = mockk()
-
-      val log: Logger = mockk()
-
-      val verticle: EventSourcedAggregateDataAccess =
-        EventSourcedAggregateDataAccess(databasePool, databaseMapper, log)
-
-      val aggregateId = AggregateId(UUID.randomUUID().toString())
-      val aggregateVersion = AggregateVersion(1)
-      val snapshot = TestSnapshot(aggregateId, aggregateVersion, "This is test data")
 
       val json = """{ "key": "value" }"""
       val expectedTuple = Tuple.of(aggregateId.id, aggregateVersion.version, json)
       val sqlResult: SqlResult<List<Row>> = mockk()
 
-      every { databaseMapper.writeValueAsString(snapshot) } returns json
+      every { databaseMapper.writeValueAsString(testSnapshot) } returns json
       every { log.isDebugEnabled } returns true
       every { log.debug(any()) } returns Unit
       every { connection.toString() } returns "Hello"
@@ -197,7 +177,7 @@ class EventSourcedAggregateDataAccessTest() {
       every { reply(capture(replySlot)) } answers {Unit}
       every { connection.close() } answers {Unit}
 
-      verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, snapshot), reply)
+      verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
 
       val capturedReply = replySlot.captured
 
@@ -209,7 +189,7 @@ class EventSourcedAggregateDataAccessTest() {
       }
 
       verifyAll {
-        databaseMapper.writeValueAsString(snapshot)
+        databaseMapper.writeValueAsString(testSnapshot)
         databasePool.getConnection(any())
         connection.toString()
         connection.preparedQuery(any(), expectedTuple, any<Collector<Row,*,List<Row>>>(), any())
