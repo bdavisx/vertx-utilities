@@ -24,7 +24,7 @@ import com.tartner.vertx.RouterVerticle
 import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandRegistrar
 import com.tartner.vertx.commands.CommandSender
-import com.tartner.vertx.cqrs.eventsourcing.EventSourcedAggregateDataVerticle
+import com.tartner.vertx.cqrs.eventsourcing.EventSourcedAggregateDataAccess
 import com.tartner.vertx.events.EventPublisher
 import com.tartner.vertx.events.EventRegistrar
 import io.vertx.core.Vertx
@@ -56,7 +56,7 @@ fun vertxUtilitiesModule(vertx: Vertx) = Kodein.Module("vertxUtilitiesModule") {
 
   bind<CoroutineDelegateVerticleFactory>() with singleton { CoroutineDelegateVerticleFactory(i(), i(), i()) }
   bind<KodeinVerticleFactoryVerticle>() with singleton { KodeinVerticleFactoryVerticle(kodein.direct, i(), i(), i(), i()) }
-  bind<EventSourcedAggregateDataVerticle>() with singleton { EventSourcedAggregateDataVerticle(i(), i(), i()) }
+  bind<EventSourcedAggregateDataAccess>() with singleton { EventSourcedAggregateDataAccess(i(), i()) }
 
   bind<RandomGenerator>() with singleton { RandomGenerator() }
   bind<IdGenerator>() with singleton { i<RandomGenerator>()::generateId }

@@ -25,7 +25,7 @@ interface CoroutineDelegate
 
 interface CommandHandlingCoroutineDelegate: CoroutineDelegate {
   val commandHandlers: Map<KClass<*>, SuspendableMessageHandler<*>>; get() = emptyMap()
-  val commandWithReplyMessageHandlers: Map<KClass<*>, SuspendableMessageHandler<*>>; get() = emptyMap()
+  val commandWithReplyMessageHandlers: Map<KClass<*>, SuspendableReplyMessageHandler<*>>; get() = emptyMap()
 }
 
 interface EventHandlingCoroutineDelegate: CoroutineDelegate {

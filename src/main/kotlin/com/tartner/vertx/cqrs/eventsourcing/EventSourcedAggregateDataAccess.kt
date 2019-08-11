@@ -23,14 +23,15 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import com.tartner.vertx.AggregateEvent
 import com.tartner.vertx.AggregateId
 import com.tartner.vertx.AggregateSnapshot
+import com.tartner.vertx.CommandHandlingCoroutineDelegate
 import com.tartner.vertx.ErrorReply
 import com.tartner.vertx.Reply
 import com.tartner.vertx.SuccessReply
+import com.tartner.vertx.SuspendableReplyMessageHandler
 import com.tartner.vertx.VCommand
 import com.tartner.vertx.batchWithParamsA
 import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandFailedDueToException
-import com.tartner.vertx.commands.CommandRegistrar
 import com.tartner.vertx.cqrs.database.EventSourcingPool
 import com.tartner.vertx.debugIf
 import com.tartner.vertx.functional.toLeft
@@ -39,12 +40,13 @@ import com.tartner.vertx.getConnectionA
 import com.tartner.vertx.queryWithParamsA
 import com.tartner.vertx.successReplyRight
 import com.tartner.vertx.updateWithParamsA
+import io.vertx.core.logging.Logger
 import io.vertx.core.logging.LoggerFactory
-import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.SqlConnection
 import io.vertx.sqlclient.Tuple
 import org.intellij.lang.annotations.Language
+import kotlin.reflect.KClass
 
 data class LoadAggregateEventsCommand(val aggregateId: AggregateId, val aggregateVersion: Long): VCommand
 data class LoadAggregateEventsResponse(val aggregateId: AggregateId, val aggregateVersion: Long,
@@ -57,11 +59,17 @@ data class LoadLatestAggregateSnapshotCommand(val aggregateId: AggregateId): VCo
 data class LoadLatestAggregateSnapshotResponse(val aggregateId: AggregateId,
   val possibleSnapshot: Option<AggregateSnapshot>): SuccessReply
 
-class EventSourcedAggregateDataVerticle(
+class EventSourcedAggregateDataAccess(
   private val databasePool: EventSourcingPool,
   private val databaseMapper: TypedObjectMapper,
-  private val commandRegistrar: CommandRegistrar
-): CoroutineVerticle() {
+  private val log: Logger = LoggerFactory.getLogger(EventSourcedAggregateDataAccess::class.java)
+): CommandHandlingCoroutineDelegate {
+
+  override val commandWithReplyMessageHandlers: Map<KClass<*>, SuspendableReplyMessageHandler<*>> = mapOf(
+      LoadAggregateEventsCommand::class to ::loadAggregateEvents,
+      LoadLatestAggregateSnapshotCommand::class to ::loadLatestAggregateSnapshot,
+      StoreAggregateEventsCommand::class to ::storeAggregateEvents,
+      StoreAggregateSnapshotCommand::class to ::storeAggregateSnapshot)
 
   companion object {
     @Language("PostgreSQL")
@@ -90,22 +98,8 @@ class EventSourcedAggregateDataVerticle(
       insert into event_sourcing.snapshots (aggregate_id, version_number, data)
       values ($1, $2, cast($3 as json))""".trimIndent()
   }
-  private val log = LoggerFactory.getLogger(EventSourcedAggregateDataVerticle::class.java)
 
-  override suspend fun start() {
-    super.start()
-
-    commandRegistrar.registerCommandHandler(this, LoadAggregateEventsCommand::class,
-      ::loadAggregateEvents)
-    commandRegistrar.registerCommandHandler(this, LoadLatestAggregateSnapshotCommand::class,
-      ::loadLatestAggregateSnapshot)
-    commandRegistrar.registerCommandHandler(this, StoreAggregateEventsCommand::class,
-      ::storeAggregateEvents)
-    commandRegistrar.registerCommandHandler(this, StoreAggregateSnapshotCommand::class,
-      ::storeAggregateSnapshot)
-  }
-
-  private suspend fun loadAggregateEvents(command: LoadAggregateEventsCommand, reply: Reply) {
+  suspend fun loadAggregateEvents(command: LoadAggregateEventsCommand, reply: Reply) {
     var connection: SqlConnection? = null
     try {
       // TODO: error handling
@@ -128,7 +122,7 @@ class EventSourcedAggregateDataVerticle(
     }
   }
 
-  private suspend fun loadLatestAggregateSnapshot(command: LoadLatestAggregateSnapshotCommand,
+  suspend fun loadLatestAggregateSnapshot(command: LoadLatestAggregateSnapshotCommand,
     reply: Reply) {
     var connection: SqlConnection? = null
     try {
@@ -152,7 +146,7 @@ class EventSourcedAggregateDataVerticle(
 
   // TODO: where do we put the retry logic? Here or a higher level? And should it be a
   //  circuit breaker? (probably should)
-  private suspend fun storeAggregateEvents(command: StoreAggregateEventsCommand, reply: Reply) {
+  suspend fun storeAggregateEvents(command: StoreAggregateEventsCommand, reply: Reply) {
     val events = command.events
     var connection: SqlConnection? = null
     try {
@@ -174,7 +168,7 @@ class EventSourcedAggregateDataVerticle(
     }
   }
 
-  private suspend fun storeAggregateSnapshot(command: StoreAggregateSnapshotCommand, reply: Reply) {
+  suspend fun storeAggregateSnapshot(command: StoreAggregateSnapshotCommand, reply: Reply) {
     val snapshot = command.snapshot
 
     var connection: SqlConnection? = null
@@ -185,7 +179,7 @@ class EventSourcedAggregateDataVerticle(
 
       log.debugIf {"Insert Snapshot SQL: ***\n$insertSnapshotSql\n*** with parameters $snapshotValues" }
 
-      connection= databasePool.getConnectionA()
+      connection = databasePool.getConnectionA()
 
       log.debugIf {"connection: $connection"}
 

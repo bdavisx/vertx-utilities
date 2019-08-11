@@ -18,7 +18,8 @@ package com.tartner.vertx
 
 import com.tartner.vertx.codecs.EventBusJacksonJsonCodec
 import com.tartner.vertx.commands.CommandSender
-import com.tartner.vertx.cqrs.eventsourcing.EventSourcedAggregateDataVerticle
+import com.tartner.vertx.cqrs.eventsourcing.EventSourcedAggregateDataAccess
+import com.tartner.vertx.kodein.DeployVerticleDelegatesCommand
 import com.tartner.vertx.kodein.DeployVerticleInstancesCommand
 import com.tartner.vertx.kodein.DeployVerticleInstancesResponse
 import com.tartner.vertx.kodein.KodeinVerticleFactoryVerticle
@@ -48,8 +49,7 @@ suspend fun startLibrary(vertx: Vertx, kodein: DKodein) {
   val startupVerticlesLists =
     listOf (
       listOf(
-        RouterVerticle::class,
-        EventSourcedAggregateDataVerticle::class
+        RouterVerticle::class
       )
     )
 
@@ -64,6 +64,17 @@ suspend fun startLibrary(vertx: Vertx, kodein: DKodein) {
       awaitMessageResult<DeployVerticleInstancesResponse> {
         commandSender.send(DeployVerticleInstancesCommand(classToDeploy), it) }
     }
+  }
+
+  val startupDelegates: List<KClass<out CoroutineDelegate>> =
+      listOf(EventSourcedAggregateDataAccess::class)
+
+  startupDelegates.forEach { classToDeploy ->
+    log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
+    // TODO: what if this returns a failure, need to test the handling verticle to see what
+    //  happens with a failure
+    awaitMessageResult<DeployVerticleInstancesResponse> {
+      commandSender.send(DeployVerticleDelegatesCommand(classToDeploy), it) }
   }
 }
 
