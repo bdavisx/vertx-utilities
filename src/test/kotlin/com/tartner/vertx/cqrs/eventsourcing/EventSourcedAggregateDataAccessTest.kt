@@ -69,48 +69,28 @@ class EventSourcedAggregateDataAccessTest() {
 
   val testSnapshot = TestSnapshot(aggregateId, aggregateVersion, "This is test data")
 
+  val json = """{ "key": "value" }"""
+  val expectedTuple = Tuple.of(aggregateId.id, aggregateVersion.version, json)
+  val sqlResult: SqlResult<List<Row>> = mockk()
+
+  val getConnectionSlot = slot<Handler<AsyncResult<SqlConnection>>>()
+
+  val preparedQuerySlot = slot<Handler<AsyncResult<SqlResult<List<Row>>>>>()
+
+  val replySlot = slot<Either<FailureReply, SuccessReply>>()
+
   @Test
   fun storeAggregateSnapshot() {
     runBlocking {
-
-      val json = """{ "key": "value" }"""
-      val expectedTuple = Tuple.of(aggregateId.id, aggregateVersion.version, json)
-      val sqlResult: SqlResult<List<Row>> = mockk()
-
-      every { databaseMapper.writeValueAsString(testSnapshot) } returns json
-      every { log.isDebugEnabled } returns true
-      every { log.debug(any()) } returns Unit
-      every { connection.toString() } returns "Hello"
-
-      val getConnectionSlot = slot<Handler<AsyncResult<SqlConnection>>>()
-      coEvery { databasePool.getConnection(capture(getConnectionSlot)) } answers {
-        getConnectionSlot.captured.handle(CommandResponse.success(connection))
-      }
-
-      val preparedQuerySlot = slot<Handler<AsyncResult<SqlResult<List<Row>>>>>()
-      coEvery { connection.preparedQuery(any(), expectedTuple, any<Collector<Row,*,List<Row>>>(),
-        capture(preparedQuerySlot)) } answers {
-        preparedQuerySlot.captured.handle(CommandResponse.success(sqlResult))
-        connection
-      }
+      commonStoreSnapshotPreparedQuerySetup()
 
       every { sqlResult.rowCount() } returns 1
-      val replySlot = slot<Any>()
-      every { reply(capture(replySlot)) } answers {Unit}
-      every { connection.close() } answers {Unit}
 
       verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
 
       replySlot.captured shouldBe successReplyRight
 
-      verifyAll {
-        databaseMapper.writeValueAsString(testSnapshot)
-        databasePool.getConnection(any())
-        connection.toString()
-        connection.preparedQuery(any(), expectedTuple, any<Collector<Row,*,List<Row>>>(), any())
-        sqlResult.rowCount()
-        connection.close()
-      }
+      commonStoreSnapshotPreparedQueryVerify()
     }
   }
 
@@ -118,64 +98,29 @@ class EventSourcedAggregateDataAccessTest() {
   fun storeAggregateSnapshotConnectionFail() {
     runBlocking {
 
-      val json = """{ "key": "value" }"""
-      val expectedTuple = Tuple.of(aggregateId.id, aggregateVersion.version, json)
-      val sqlResult: SqlResult<List<Row>> = mockk()
+      commonStoreSnapshotSetup()
 
-      every { databaseMapper.writeValueAsString(testSnapshot) } returns json
-      every { log.isDebugEnabled } returns true
-
-      val getConnectionSlot = slot<Handler<AsyncResult<SqlConnection>>>()
       val expectedException = RuntimeException("Expected")
       coEvery { databasePool.getConnection(capture(getConnectionSlot)) } answers {
         getConnectionSlot.captured.handle(CommandResponse.failure(expectedException))
       }
 
-      every { log.debug(any()) } returns Unit
       every { log.warn(any(), expectedException) } returns Unit
-
-      val replySlot = slot<Any>()
-      every { reply(capture(replySlot)) } answers {Unit}
 
       verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
 
       replySlot.captured shouldBe CommandFailedDueToException(expectedException).left()
 
-      verifyAll {
-        databaseMapper.writeValueAsString(testSnapshot)
-        databasePool.getConnection(any())
-      }}
+      commonStoreSnapshotVerify()
+    }
   }
 
   @Test
   fun storeAggregateSnapshotNoRecordsUpdated() {
     runBlocking {
-
-      val json = """{ "key": "value" }"""
-      val expectedTuple = Tuple.of(aggregateId.id, aggregateVersion.version, json)
-      val sqlResult: SqlResult<List<Row>> = mockk()
-
-      every { databaseMapper.writeValueAsString(testSnapshot) } returns json
-      every { log.isDebugEnabled } returns true
-      every { log.debug(any()) } returns Unit
-      every { connection.toString() } returns "Hello"
-
-      val getConnectionSlot = slot<Handler<AsyncResult<SqlConnection>>>()
-      coEvery { databasePool.getConnection(capture(getConnectionSlot)) } answers {
-        getConnectionSlot.captured.handle(CommandResponse.success(connection))
-      }
-
-      val preparedQuerySlot = slot<Handler<AsyncResult<SqlResult<List<Row>>>>>()
-      coEvery { connection.preparedQuery(any(), expectedTuple, any<Collector<Row,*,List<Row>>>(),
-        capture(preparedQuerySlot)) } answers {
-        preparedQuerySlot.captured.handle(CommandResponse.success(sqlResult))
-        connection
-      }
+      commonStoreSnapshotPreparedQuerySetup()
 
       every { sqlResult.rowCount() } returns 0
-      val replySlot = slot<Either<FailureReply, SuccessReply>>()
-      every { reply(capture(replySlot)) } answers {Unit}
-      every { connection.close() } answers {Unit}
 
       verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
 
@@ -188,14 +133,50 @@ class EventSourcedAggregateDataAccessTest() {
         fail("Reply is wrong type, should be ErrorReply: $capturedReply")
       }
 
-      verifyAll {
-        databaseMapper.writeValueAsString(testSnapshot)
-        databasePool.getConnection(any())
-        connection.toString()
-        connection.preparedQuery(any(), expectedTuple, any<Collector<Row,*,List<Row>>>(), any())
-        sqlResult.rowCount()
-        connection.close()
-      }
+      commonStoreSnapshotPreparedQueryVerify()
+    }
+  }
+
+  private fun commonStoreSnapshotSetup() {
+    every { databaseMapper.writeValueAsString(testSnapshot) } returns json
+    every { log.isDebugEnabled } returns true
+    every { log.debug(any()) } returns Unit
+
+    every { reply(capture(replySlot)) } answers {Unit}
+  }
+
+  private fun commonStoreSnapshotPreparedQuerySetup() {
+    commonStoreSnapshotSetup()
+    every { connection.toString() } returns "Hello"
+
+    coEvery { databasePool.getConnection(capture(getConnectionSlot)) } answers {
+      getConnectionSlot.captured.handle(CommandResponse.success(connection))
+    }
+
+    coEvery {
+      connection.preparedQuery(any(), expectedTuple, any<Collector<Row, *, List<Row>>>(), capture(preparedQuerySlot))
+    } answers {
+      preparedQuerySlot.captured.handle(CommandResponse.success(sqlResult))
+      connection
+    }
+
+    every { connection.close() } answers {Unit}
+  }
+
+  private fun commonStoreSnapshotVerify() {
+    verifyAll {
+      databaseMapper.writeValueAsString(testSnapshot)
+      databasePool.getConnection(any())
+    }
+  }
+
+  private fun commonStoreSnapshotPreparedQueryVerify() {
+    commonStoreSnapshotVerify()
+    verifyAll {
+      connection.toString()
+      connection.preparedQuery(any(), expectedTuple, any<Collector<Row, *, List<Row>>>(), any())
+      sqlResult.rowCount()
+      connection.close()
     }
   }
 }
