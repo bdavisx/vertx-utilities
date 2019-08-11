@@ -60,8 +60,10 @@ class EventSourcedAggregateDataAccessTest() {
       val reply: Reply = mockk()
       val connection: SqlConnection = mockk()
 
+      val log: Logger = mockk()
+
       val verticle: EventSourcedAggregateDataAccess =
-        EventSourcedAggregateDataAccess(databasePool, databaseMapper)
+        EventSourcedAggregateDataAccess(databasePool, databaseMapper, log)
 
       val aggregateId = AggregateId(UUID.randomUUID().toString())
       val aggregateVersion = AggregateVersion(1)
@@ -71,10 +73,9 @@ class EventSourcedAggregateDataAccessTest() {
       val expectedTuple = Tuple.of(aggregateId.id, aggregateVersion.version, json)
       val sqlResult: SqlResult<List<Row>> = mockk()
 
-      val log: Logger = mockk()
-
       every { databaseMapper.writeValueAsString(snapshot) } returns json
-      every { log.isDebugEnabled } returns false
+      every { log.isDebugEnabled } returns true
+      every { log.debug(any()) } returns Unit
       every { connection.toString() } returns "Hello"
 
       val getConnectionSlot = slot<Handler<AsyncResult<SqlConnection>>>()
@@ -93,7 +94,6 @@ class EventSourcedAggregateDataAccessTest() {
       val replySlot = slot<Any>()
       every { reply(capture(replySlot)) } answers {Unit}
       every { connection.close() } answers {Unit}
-
 
       verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, snapshot), reply)
 
@@ -146,12 +146,7 @@ class EventSourcedAggregateDataAccessTest() {
       verifyAll {
         databaseMapper.writeValueAsString(snapshot)
         databasePool.getConnection(any())
-      }
-
-      verify {
-        sqlResult.rowCount()
-      }
-    }
+      }}
   }
 }
 //          val loadResult = commandSender.sendA<FailureReply, SuccessReply>(
