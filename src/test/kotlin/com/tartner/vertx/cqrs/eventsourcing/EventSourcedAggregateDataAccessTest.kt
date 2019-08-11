@@ -16,21 +16,26 @@
 
 package com.tartner.vertx.cqrs.eventsourcing
 
+import arrow.core.Either
 import arrow.core.left
 import com.tartner.vertx.AggregateId
 import com.tartner.vertx.AggregateSnapshot
 import com.tartner.vertx.AggregateVersion
+import com.tartner.vertx.ErrorReply
+import com.tartner.vertx.FailureReply
 import com.tartner.vertx.Reply
+import com.tartner.vertx.SuccessReply
 import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandFailedDueToException
 import com.tartner.vertx.cqrs.database.EventSourcingPool
 import com.tartner.vertx.successReplyRight
+import io.kotlintest.fail
+import io.kotlintest.matchers.string.shouldContain
 import io.kotlintest.shouldBe
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
-import io.mockk.verify
 import io.mockk.verifyAll
 import io.vertx.core.AsyncResult
 import io.vertx.core.Handler
@@ -147,6 +152,71 @@ class EventSourcedAggregateDataAccessTest() {
         databaseMapper.writeValueAsString(snapshot)
         databasePool.getConnection(any())
       }}
+  }
+
+  @Test
+  fun storeAggregateSnapshotNoRecordsUpdated() {
+    runBlocking {
+      val databasePool: EventSourcingPool = mockk()
+      val databaseMapper: TypedObjectMapper = mockk()
+      val reply: Reply = mockk()
+      val connection: SqlConnection = mockk()
+
+      val log: Logger = mockk()
+
+      val verticle: EventSourcedAggregateDataAccess =
+        EventSourcedAggregateDataAccess(databasePool, databaseMapper, log)
+
+      val aggregateId = AggregateId(UUID.randomUUID().toString())
+      val aggregateVersion = AggregateVersion(1)
+      val snapshot = TestSnapshot(aggregateId, aggregateVersion, "This is test data")
+
+      val json = """{ "key": "value" }"""
+      val expectedTuple = Tuple.of(aggregateId.id, aggregateVersion.version, json)
+      val sqlResult: SqlResult<List<Row>> = mockk()
+
+      every { databaseMapper.writeValueAsString(snapshot) } returns json
+      every { log.isDebugEnabled } returns true
+      every { log.debug(any()) } returns Unit
+      every { connection.toString() } returns "Hello"
+
+      val getConnectionSlot = slot<Handler<AsyncResult<SqlConnection>>>()
+      coEvery { databasePool.getConnection(capture(getConnectionSlot)) } answers {
+        getConnectionSlot.captured.handle(CommandResponse.success(connection))
+      }
+
+      val preparedQuerySlot = slot<Handler<AsyncResult<SqlResult<List<Row>>>>>()
+      coEvery { connection.preparedQuery(any(), expectedTuple, any<Collector<Row,*,List<Row>>>(),
+        capture(preparedQuerySlot)) } answers {
+        preparedQuerySlot.captured.handle(CommandResponse.success(sqlResult))
+        connection
+      }
+
+      every { sqlResult.rowCount() } returns 0
+      val replySlot = slot<Either<FailureReply, SuccessReply>>()
+      every { reply(capture(replySlot)) } answers {Unit}
+      every { connection.close() } answers {Unit}
+
+      verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, snapshot), reply)
+
+      val capturedReply = replySlot.captured
+
+      if (capturedReply is Either.Left<*>) {
+        val error = capturedReply.a as ErrorReply
+        error.message shouldContain("Unable to store aggregate snapshot for snapshot")
+      } else {
+        fail("Reply is wrong type, should be ErrorReply: $capturedReply")
+      }
+
+      verifyAll {
+        databaseMapper.writeValueAsString(snapshot)
+        databasePool.getConnection(any())
+        connection.toString()
+        connection.preparedQuery(any(), expectedTuple, any<Collector<Row,*,List<Row>>>(), any())
+        sqlResult.rowCount()
+        connection.close()
+      }
+    }
   }
 }
 //          val loadResult = commandSender.sendA<FailureReply, SuccessReply>(

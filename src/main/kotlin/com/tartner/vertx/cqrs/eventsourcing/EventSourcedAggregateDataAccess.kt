@@ -185,8 +185,9 @@ class EventSourcedAggregateDataAccess(
 
       val updateResult = connection.updateWithParamsA(insertSnapshotSql, snapshotValues)
       if (updateResult.rowCount() == 0) {
-        reply(
-          ErrorReply("Unable to store aggregate snapshot for snapshot $snapshot", this::class).left())
+        reply(ErrorReply(
+          "Unable to store aggregate snapshot for snapshot $snapshot, no records were updated",
+          this::class).left())
       } else {
         reply(successReplyRight)
       }

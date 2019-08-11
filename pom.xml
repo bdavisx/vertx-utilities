@@ -37,7 +37,7 @@
         <junit.version>4.12</junit.version>
 
         <kotlinCoroutinesVersion>1.1.0</kotlinCoroutinesVersion>
-        <vertxVersion>3.8.0-SNAPSHOT</vertxVersion>
+        <vertxVersion>3.8.0</vertxVersion>
         <jacksonVersion>2.9.8</jacksonVersion>
 
         <jmeVersion>3.1.0-stable</jmeVersion>
