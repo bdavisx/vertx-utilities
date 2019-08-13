@@ -18,6 +18,9 @@ package com.tartner.vertx.cqrs.eventsourcing
 
 import arrow.core.Either
 import arrow.core.left
+import com.tartner.test.utilities.DatabaseTestUtilities
+import com.tartner.test.utilities.PreparedQueryCaptures
+import com.tartner.test.utilities.setupSuccessfulPreparedQuery
 import com.tartner.vertx.AggregateId
 import com.tartner.vertx.AggregateSnapshot
 import com.tartner.vertx.AggregateVersion
@@ -32,6 +35,7 @@ import com.tartner.vertx.successReplyRight
 import io.kotlintest.fail
 import io.kotlintest.matchers.string.shouldContain
 import io.kotlintest.shouldBe
+import io.mockk.CapturingSlot
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
@@ -54,12 +58,14 @@ data class TestSnapshot(override val aggregateId: AggregateId,
   override val aggregateVersion: AggregateVersion, val testData: String): AggregateSnapshot
 
 class EventSourcedAggregateDataAccessTest() {
+  val databaseTestUtilities = DatabaseTestUtilities()
+
   val databasePool: EventSourcingPool = mockk()
   val databaseMapper: TypedObjectMapper = mockk()
   val reply: Reply = mockk()
-  val connection: SqlConnection = mockk()
+  val connection: SqlConnection = mockk(relaxed = true)
 
-  val log: Logger = mockk()
+  val log: Logger = mockk(relaxed = true)
 
   val verticle: EventSourcedAggregateDataAccess =
     EventSourcedAggregateDataAccess(databasePool, databaseMapper, log)
@@ -78,6 +84,8 @@ class EventSourcedAggregateDataAccessTest() {
   val preparedQuerySlot = slot<Handler<AsyncResult<SqlResult<List<Row>>>>>()
 
   val replySlot = slot<Either<FailureReply, SuccessReply>>()
+
+  lateinit var preparedQueryCaptures: PreparedQueryCaptures
 
   @Test
   fun storeAggregateSnapshot() {
@@ -140,27 +148,20 @@ class EventSourcedAggregateDataAccessTest() {
   private fun commonStoreSnapshotSetup() {
     every { databaseMapper.writeValueAsString(testSnapshot) } returns json
     every { log.isDebugEnabled } returns true
-    every { log.debug(any()) } returns Unit
 
     every { reply(capture(replySlot)) } answers {Unit}
   }
 
   private fun commonStoreSnapshotPreparedQuerySetup() {
     commonStoreSnapshotSetup()
-    every { connection.toString() } returns "Hello"
 
+    // TODO: make this a function that takes (or creates) the mock connection and returns the
+    //  connection back, we don't need the slot because it's just used for the callback
     coEvery { databasePool.getConnection(capture(getConnectionSlot)) } answers {
       getConnectionSlot.captured.handle(CommandResponse.success(connection))
     }
 
-    coEvery {
-      connection.preparedQuery(any(), expectedTuple, any<Collector<Row, *, List<Row>>>(), capture(preparedQuerySlot))
-    } answers {
-      preparedQuerySlot.captured.handle(CommandResponse.success(sqlResult))
-      connection
-    }
-
-    every { connection.close() } answers {Unit}
+    preparedQueryCaptures = setupSuccessfulPreparedQuery(connection, sqlResult)
   }
 
   private fun commonStoreSnapshotVerify() {
@@ -173,6 +174,9 @@ class EventSourcedAggregateDataAccessTest() {
   private fun commonStoreSnapshotPreparedQueryVerify() {
     commonStoreSnapshotVerify()
     verifyAll {
+      preparedQueryCaptures.tupleSlot.captured shouldBe expectedTuple
+      preparedQueryCaptures.sqlSlot.captured shouldContain "insert into"
+      preparedQueryCaptures.sqlSlot.captured shouldContain "snapshots"
       connection.toString()
       connection.preparedQuery(any(), expectedTuple, any<Collector<Row, *, List<Row>>>(), any())
       sqlResult.rowCount()

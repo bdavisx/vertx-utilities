@@ -40,9 +40,6 @@
         <vertxVersion>3.8.0</vertxVersion>
         <jacksonVersion>2.9.8</jacksonVersion>
 
-        <jmeVersion>3.1.0-stable</jmeVersion>
-        <jmeGroup>org.jmonkeyengine</jmeGroup>
-
         <dokka.version>0.9.9</dokka.version>
         <arrow.version>0.8.2</arrow.version>
         <kotlintest.version>3.2.1</kotlintest.version>

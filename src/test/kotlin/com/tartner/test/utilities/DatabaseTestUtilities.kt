@@ -18,10 +18,22 @@ package com.tartner.test.utilities
 
 import com.tartner.vertx.cqrs.database.AbstractPool
 import com.tartner.vertx.updateWithParamsA
+import io.mockk.CapturingSlot
+import io.mockk.coEvery
+import io.mockk.slot
+import io.vertx.core.AsyncResult
+import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.awaitResult
+import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.SqlConnection
+import io.vertx.sqlclient.SqlResult
 import io.vertx.sqlclient.Tuple
+import io.vertx.sqlclient.impl.command.CommandResponse
+import java.util.stream.Collector
+
+data class PreparedQueryCaptures(
+  val sqlSlot: CapturingSlot<String>, val tupleSlot: CapturingSlot<Tuple>)
 
 class DatabaseTestUtilities {
   suspend fun runUpdateSql(sql: String, parameters: Tuple, vertx: Vertx): Int {
@@ -34,4 +46,21 @@ class DatabaseTestUtilities {
 
     return updateResult.rowCount()
   }
+}
+
+fun setupSuccessfulPreparedQuery(mockConnection: SqlConnection , sqlResult: SqlResult<List<Row>>)
+  : PreparedQueryCaptures {
+  val sqlSlot: CapturingSlot<String> = slot<String>()
+  val tupleSlot: CapturingSlot<Tuple> = slot<Tuple>()
+  val preparedQuerySlot = slot<Handler<AsyncResult<SqlResult<List<Row>>>>>()
+
+  coEvery {
+    mockConnection.preparedQuery(capture(sqlSlot), capture(tupleSlot),
+      any<Collector<Row, *, List<Row>>>(), capture(preparedQuerySlot))
+  } answers {
+    preparedQuerySlot.captured.handle(CommandResponse.success(sqlResult))
+    mockConnection
+  }
+
+  return PreparedQueryCaptures(sqlSlot, tupleSlot)
 }
