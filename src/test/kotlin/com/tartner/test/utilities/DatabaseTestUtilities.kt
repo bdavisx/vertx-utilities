@@ -17,6 +17,7 @@
 package com.tartner.test.utilities
 
 import com.tartner.vertx.cqrs.database.AbstractPool
+import com.tartner.vertx.cqrs.database.EventSourcingPool
 import com.tartner.vertx.updateWithParamsA
 import io.mockk.CapturingSlot
 import io.mockk.coEvery
@@ -35,19 +36,40 @@ import java.util.stream.Collector
 data class PreparedQueryCaptures(
   val sqlSlot: CapturingSlot<String>, val tupleSlot: CapturingSlot<Tuple>)
 
-class DatabaseTestUtilities {
-  suspend fun runUpdateSql(sql: String, parameters: Tuple, vertx: Vertx): Int {
+/** Runs a sql statement against against a connection. */
+suspend fun runUpdateSql(sql: String, parameters: Tuple, vertx: Vertx,
+  environmentNamePrefix: String = "databaseEventSourcing"): Int {
+  val connection = awaitResult<SqlConnection> { handler ->
+    val pool = AbstractPool.createPool(vertx, System.getenv(), environmentNamePrefix)
+    pool.getConnection(handler)
+  }
+  val updateResult = connection.updateWithParamsA(sql, parameters)
 
-    val connection = awaitResult<SqlConnection> { handler ->
-      val pool = AbstractPool.createPool(vertx, System.getenv(), "databaseEventSourcing")
-      pool.getConnection(handler)
-    }
-    val updateResult = connection.updateWithParamsA(sql, parameters)
+  return updateResult.rowCount()
+}
 
-    return updateResult.rowCount()
+/**
+ * Prepares a mock EventSourcingPool to "return" a SqlConnection (real or mock). Returns captures
+ * that will hold the sql and parameters sent to the query after the call.
+ */
+fun setupSuccessfulGetConnection(mockDatabasePool: EventSourcingPool, connection: SqlConnection) {
+  val getConnectionSlot = slot<Handler<AsyncResult<SqlConnection>>>()
+  coEvery { mockDatabasePool.getConnection(capture(getConnectionSlot)) } answers {
+    getConnectionSlot.captured.handle(CommandResponse.success(connection))
   }
 }
 
+fun setupFailedGetConnection(mockDatabasePool: EventSourcingPool, failureException: Throwable) {
+  val getConnectionSlot = slot<Handler<AsyncResult<SqlConnection>>>()
+  coEvery { mockDatabasePool.getConnection(capture(getConnectionSlot)) } answers {
+    getConnectionSlot.captured.handle(CommandResponse.failure(failureException))
+  }
+}
+
+/**
+ * Prepares a mockConnection to "return" a SqlResult<List<Row>>. Returns captures that will hold
+ * the sql and parameters sent to the query.
+ */
 fun setupSuccessfulPreparedQuery(mockConnection: SqlConnection , sqlResult: SqlResult<List<Row>>)
   : PreparedQueryCaptures {
   val sqlSlot: CapturingSlot<String> = slot<String>()

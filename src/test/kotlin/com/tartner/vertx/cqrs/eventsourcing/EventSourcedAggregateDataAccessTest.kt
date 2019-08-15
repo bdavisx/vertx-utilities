@@ -18,8 +18,9 @@ package com.tartner.vertx.cqrs.eventsourcing
 
 import arrow.core.Either
 import arrow.core.left
-import com.tartner.test.utilities.DatabaseTestUtilities
 import com.tartner.test.utilities.PreparedQueryCaptures
+import com.tartner.test.utilities.setupFailedGetConnection
+import com.tartner.test.utilities.setupSuccessfulGetConnection
 import com.tartner.test.utilities.setupSuccessfulPreparedQuery
 import com.tartner.vertx.AggregateId
 import com.tartner.vertx.AggregateSnapshot
@@ -35,8 +36,6 @@ import com.tartner.vertx.successReplyRight
 import io.kotlintest.fail
 import io.kotlintest.matchers.string.shouldContain
 import io.kotlintest.shouldBe
-import io.mockk.CapturingSlot
-import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
@@ -48,7 +47,6 @@ import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.SqlConnection
 import io.vertx.sqlclient.SqlResult
 import io.vertx.sqlclient.Tuple
-import io.vertx.sqlclient.impl.command.CommandResponse
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import java.util.UUID
@@ -58,8 +56,6 @@ data class TestSnapshot(override val aggregateId: AggregateId,
   override val aggregateVersion: AggregateVersion, val testData: String): AggregateSnapshot
 
 class EventSourcedAggregateDataAccessTest() {
-  val databaseTestUtilities = DatabaseTestUtilities()
-
   val databasePool: EventSourcingPool = mockk()
   val databaseMapper: TypedObjectMapper = mockk()
   val reply: Reply = mockk()
@@ -109,9 +105,7 @@ class EventSourcedAggregateDataAccessTest() {
       commonStoreSnapshotSetup()
 
       val expectedException = RuntimeException("Expected")
-      coEvery { databasePool.getConnection(capture(getConnectionSlot)) } answers {
-        getConnectionSlot.captured.handle(CommandResponse.failure(expectedException))
-      }
+      setupFailedGetConnection(databasePool, expectedException)
 
       every { log.warn(any(), expectedException) } returns Unit
 
@@ -155,11 +149,7 @@ class EventSourcedAggregateDataAccessTest() {
   private fun commonStoreSnapshotPreparedQuerySetup() {
     commonStoreSnapshotSetup()
 
-    // TODO: make this a function that takes (or creates) the mock connection and returns the
-    //  connection back, we don't need the slot because it's just used for the callback
-    coEvery { databasePool.getConnection(capture(getConnectionSlot)) } answers {
-      getConnectionSlot.captured.handle(CommandResponse.success(connection))
-    }
+    setupSuccessfulGetConnection(databasePool, connection)
 
     preparedQueryCaptures = setupSuccessfulPreparedQuery(connection, sqlResult)
   }
