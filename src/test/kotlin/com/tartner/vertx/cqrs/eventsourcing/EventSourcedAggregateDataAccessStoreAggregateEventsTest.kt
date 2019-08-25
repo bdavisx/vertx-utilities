@@ -51,21 +51,21 @@ import java.util.stream.Collector
 
 class EventSourcedAggregateDataAccessStoreAggregateEventsTest() {
   val databasePool: EventSourcingPool = mockk()
-  val databaseMapper: TypedObjectMapper = mockk()
   val reply: Reply = mockk()
   val connection: SqlConnection = mockk(relaxed = true)
 
   val log: Logger = mockk(relaxed = true)
 
-  val verticle: EventSourcedAggregateDataAccess =
-    EventSourcedAggregateDataAccess(databasePool, databaseMapper, log)
+  val databaseMapper = TypedObjectMapper.default
+
+  val storeAggregateSnapshotPostgresHandler: StoreAggregateSnapshotPostgresHandler = StoreAggregateSnapshotPostgresHandler(databasePool, databaseMapper, log)
 
   val aggregateId = AggregateId(UUID.randomUUID().toString())
   val aggregateVersion = AggregateVersion(1)
 
   val testSnapshot = TestSnapshot(aggregateId, aggregateVersion, "This is test data")
 
-  val jsonText = """{ "key": "value" }"""
+  val jsonText = databaseMapper.writeValueAsString(expectedTuple)
   val expectedTuple = Tuple.of(aggregateId.id, aggregateVersion.version, jsonText)
   val sqlResult: SqlResult<List<Row>> = mockk()
 
@@ -76,17 +76,15 @@ class EventSourcedAggregateDataAccessStoreAggregateEventsTest() {
   @Test
   fun storeAggregateEvents() {
     runBlocking {
-      every { databaseMapper.writeValueAsString(testSnapshot) } returns jsonText
       every { log.isDebugEnabled } returns true
-      every { reply(
-        this@EventSourcedAggregateDataAccessStoreAggregateEventsTest.capture<Either<FailureReply, SuccessReply>>(
-          replySlot)) } answers {Unit}
+      every { reply(capture<Either<FailureReply, SuccessReply>>(replySlot)) } answers {Unit}
       setupSuccessfulGetConnection(databasePool, connection)
       preparedQueryCaptures = setupSuccessfulPreparedQuery(connection, sqlResult)
 
       every { sqlResult.rowCount() } returns 1
 
-      verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
+      storeAggregateSnapshotPostgresHandler.storeAggregateSnapshot(
+        StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
 
       replySlot.captured shouldBe successReplyRight
 
@@ -103,7 +101,8 @@ class EventSourcedAggregateDataAccessStoreAggregateEventsTest() {
       val expectedException = RuntimeException("Expected")
       setupFailedGetConnection(databasePool, expectedException)
 
-      verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
+      storeAggregateSnapshotPostgresHandler.storeAggregateSnapshot(
+        StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
 
       replySlot.captured shouldBe CommandFailedDueToException(expectedException).left()
 
@@ -118,7 +117,8 @@ class EventSourcedAggregateDataAccessStoreAggregateEventsTest() {
 
       every { sqlResult.rowCount() } returns 0
 
-      verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
+      storeAggregateSnapshotPostgresHandler.storeAggregateSnapshot(
+        StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
 
       val capturedReply = replySlot.captured
 
@@ -134,9 +134,7 @@ class EventSourcedAggregateDataAccessStoreAggregateEventsTest() {
   }
 
   private fun commonStoreSnapshotSetup() {
-    every { databaseMapper.writeValueAsString(testSnapshot) } returns jsonText
     every { log.isDebugEnabled } returns true
-
     every { reply(capture(replySlot)) } answers {Unit}
   }
 
@@ -158,7 +156,7 @@ class EventSourcedAggregateDataAccessStoreAggregateEventsTest() {
   private fun commonStoreSnapshotPreparedQueryVerify() {
     commonStoreSnapshotVerify()
     verifyAll {
-      preparedQueryCaptures.tupleSlot.captured shouldBe expectedTuple
+      preparedQueryCaptures.tupleSlot.captured shouldContain expectedTuple
       preparedQueryCaptures.sqlSlot.captured shouldContain "insert into"
       preparedQueryCaptures.sqlSlot.captured shouldContain "snapshots"
       connection.toString()

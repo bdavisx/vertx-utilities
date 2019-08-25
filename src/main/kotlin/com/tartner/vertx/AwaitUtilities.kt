@@ -25,14 +25,6 @@ import io.vertx.core.eventbus.EventBus
 import io.vertx.core.eventbus.Message
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.awaitEvent
-import io.vertx.kotlin.coroutines.awaitResult
-import io.vertx.sqlclient.Pool
-import io.vertx.sqlclient.Row
-import io.vertx.sqlclient.RowSet
-import io.vertx.sqlclient.SqlConnection
-import io.vertx.sqlclient.SqlResult
-import io.vertx.sqlclient.Tuple
-import java.util.stream.Collectors
 
 val CoroutineVerticle.eventBus: EventBus
   get() = vertx.eventBus()
@@ -59,22 +51,4 @@ suspend fun <T> awaitMessageEither(block: (
 
 class EitherFailureException(failureReply: FailureReply)
   : RuntimeException(failureReply.toString())
-
-suspend fun Pool.getConnectionA() = awaitResult<SqlConnection> { this.getConnection(it) }
-
-suspend fun SqlConnection.queryA(queryText: String): RowSet =
-  awaitResult { this.query(queryText, it) }
-
-suspend fun SqlConnection.queryWithParamsA(queryText: String, params: Tuple): RowSet =
-  awaitResult { this.preparedQuery(queryText, params, it) }
-
-suspend fun SqlConnection.updateWithParamsA(queryText: String, params: Tuple)
-  : SqlResult<List<Row>> = awaitResult {
-  this.preparedQuery(queryText, params, Collectors.toList(), it)
-}
-
-suspend fun SqlConnection.batchWithParamsA(queryText: String, params: List<Tuple>)
-  : SqlResult<List<Row>> = awaitResult {
-  this.preparedBatch(queryText, params, Collectors.toList(), it)
-}
 

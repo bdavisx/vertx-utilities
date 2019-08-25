@@ -18,7 +18,7 @@ package com.tartner.test.utilities
 
 import com.tartner.vertx.cqrs.database.AbstractPool
 import com.tartner.vertx.cqrs.database.EventSourcingPool
-import com.tartner.vertx.updateWithParamsA
+import com.tartner.vertx.sqlclient.updateWithParamsAsync
 import io.mockk.CapturingSlot
 import io.mockk.coEvery
 import io.mockk.slot
@@ -43,7 +43,7 @@ suspend fun runUpdateSql(sql: String, parameters: Tuple, vertx: Vertx,
     val pool = AbstractPool.createPool(vertx, System.getenv(), environmentNamePrefix)
     pool.getConnection(handler)
   }
-  val updateResult = connection.updateWithParamsA(sql, parameters)
+  val updateResult = connection.updateWithParamsAsync(sql, parameters)
 
   return updateResult.rowCount()
 }

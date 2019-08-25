@@ -40,8 +40,6 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verifyAll
-import io.vertx.core.AsyncResult
-import io.vertx.core.Handler
 import io.vertx.core.logging.Logger
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.SqlConnection
@@ -63,8 +61,7 @@ class EventSourcedAggregateDataAccessTest() {
 
   val log: Logger = mockk(relaxed = true)
 
-  val verticle: EventSourcedAggregateDataAccess =
-    EventSourcedAggregateDataAccess(databasePool, databaseMapper, log)
+  val storeAggregateSnapshotPostgresHandler: StoreAggregateSnapshotPostgresHandler = StoreAggregateSnapshotPostgresHandler(databasePool, databaseMapper, log)
 
   val aggregateId = AggregateId(UUID.randomUUID().toString())
   val aggregateVersion = AggregateVersion(1)
@@ -97,7 +94,8 @@ class EventSourcedAggregateDataAccessTest() {
 
       every { sqlResult.rowCount() } returns 1
 
-      verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
+      storeAggregateSnapshotPostgresHandler.storeAggregateSnapshot(
+        StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
 
       replySlot.captured shouldBe successReplyRight
 
@@ -112,7 +110,8 @@ class EventSourcedAggregateDataAccessTest() {
 
       every { sqlResult.rowCount() } returns 1
 
-      verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
+      storeAggregateSnapshotPostgresHandler.storeAggregateSnapshot(
+        StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
 
       replySlot.captured shouldBe successReplyRight
 
@@ -129,7 +128,8 @@ class EventSourcedAggregateDataAccessTest() {
       val expectedException = RuntimeException("Expected")
       setupFailedGetConnection(databasePool, expectedException)
 
-      verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
+      storeAggregateSnapshotPostgresHandler.storeAggregateSnapshot(
+        StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
 
       replySlot.captured shouldBe CommandFailedDueToException(expectedException).left()
 
@@ -144,7 +144,8 @@ class EventSourcedAggregateDataAccessTest() {
 
       every { sqlResult.rowCount() } returns 0
 
-      verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
+      storeAggregateSnapshotPostgresHandler.storeAggregateSnapshot(
+        StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
 
       val capturedReply = replySlot.captured
 

@@ -22,15 +22,15 @@ import com.tartner.vertx.AggregateEvent
 import com.tartner.vertx.CommandHandlingCoroutineDelegate
 import com.tartner.vertx.Reply
 import com.tartner.vertx.SuspendableReplyMessageHandler
-import com.tartner.vertx.batchWithParamsA
 import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandFailedDueToException
 import com.tartner.vertx.cqrs.database.EventSourcingPool
 import com.tartner.vertx.debugIf
 import com.tartner.vertx.functional.toLeft
 import com.tartner.vertx.functional.toRight
-import com.tartner.vertx.getConnectionA
-import com.tartner.vertx.queryWithParamsA
+import com.tartner.vertx.sqlclient.batchWithParamsAsync
+import com.tartner.vertx.sqlclient.getConnectionAsync
+import com.tartner.vertx.sqlclient.queryWithParamsAsync
 import com.tartner.vertx.successReplyRight
 import io.vertx.core.logging.Logger
 import io.vertx.core.logging.LoggerFactory
@@ -45,8 +45,8 @@ class EventSourcedAggregateDataAccess(
   private val databaseMapper: TypedObjectMapper,
   private val log: Logger = LoggerFactory.getLogger(EventSourcedAggregateDataAccess::class.java)
 ): CommandHandlingCoroutineDelegate {
-
-  override val commandWithReplyMessageHandlers: Map<KClass<*>, SuspendableReplyMessageHandler<*>> = mapOf(
+  override val commandWithReplyMessageHandlers: Map<KClass<*>, SuspendableReplyMessageHandler<*>>
+    = mapOf<KClass<*>, SuspendableReplyMessageHandler<*>>(
       AggregateEventsQuery::class to ::loadAggregateEvents,
       StoreAggregateEventsCommand::class to ::storeAggregateEvents)
 
@@ -69,12 +69,12 @@ class EventSourcedAggregateDataAccess(
     var connection: SqlConnection? = null
     try {
       // TODO: error handling
-      connection = databasePool.getConnectionA()
+      connection = databasePool.getConnectionAsync()
 
       val parameters = Tuple.of(query.aggregateId.id, query.aggregateVersion)
       log.debugIf { "Running event load sql: '$selectEventsSql' with parameters: $parameters" }
 
-      val eventsResultSet: RowSet = connection.queryWithParamsA(selectEventsSql, parameters)
+      val eventsResultSet: RowSet = connection.queryWithParamsAsync(selectEventsSql, parameters)
 
       val events = eventsResultSet.map { databaseMapper.readValue<AggregateEvent>(it.getString(0)) }
 
@@ -101,8 +101,8 @@ class EventSourcedAggregateDataAccess(
           Tuple.of(event.aggregateId.id, event.aggregateVersion.version, eventSerialized)
         }
       log.debugIf { "Events converted to Tuples for postgresql" }
-      connection = databasePool.getConnectionA()
-      connection.batchWithParamsA(insertEventsSql, eventsValues)
+      connection = databasePool.getConnectionAsync()
+      connection.batchWithParamsAsync(insertEventsSql, eventsValues)
       reply(successReplyRight)
     } catch (ex: Throwable) {
       log.warn("Exception while trying to store Aggregate Events", ex)
