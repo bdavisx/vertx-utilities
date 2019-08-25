@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Bill Davis.
+ * Copyright (c) 2019, Bill Davis.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,6 @@ import com.tartner.test.utilities.setupFailedGetConnection
 import com.tartner.test.utilities.setupSuccessfulGetConnection
 import com.tartner.test.utilities.setupSuccessfulPreparedQuery
 import com.tartner.vertx.AggregateId
-import com.tartner.vertx.AggregateSnapshot
 import com.tartner.vertx.AggregateVersion
 import com.tartner.vertx.ErrorReply
 import com.tartner.vertx.FailureReply
@@ -40,8 +39,6 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verifyAll
-import io.vertx.core.AsyncResult
-import io.vertx.core.Handler
 import io.vertx.core.logging.Logger
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.SqlConnection
@@ -52,10 +49,7 @@ import org.junit.Test
 import java.util.UUID
 import java.util.stream.Collector
 
-data class TestSnapshot(override val aggregateId: AggregateId,
-  override val aggregateVersion: AggregateVersion, val testData: String): AggregateSnapshot
-
-class EventSourcedAggregateDataAccessTest() {
+class EventSourcedAggregateDataAccessStoreAggregateEventsTest() {
   val databasePool: EventSourcingPool = mockk()
   val databaseMapper: TypedObjectMapper = mockk()
   val reply: Reply = mockk()
@@ -82,33 +76,13 @@ class EventSourcedAggregateDataAccessTest() {
   @Test
   fun storeAggregateEvents() {
     runBlocking {
-//      commonStoreSnapshotPreparedQuerySetup()
-
-//      commonStoreSnapshotSetup()
       every { databaseMapper.writeValueAsString(testSnapshot) } returns jsonText
       every { log.isDebugEnabled } returns true
-
-      every { reply(capture(replySlot)) } answers {Unit}
-
+      every { reply(
+        this@EventSourcedAggregateDataAccessStoreAggregateEventsTest.capture<Either<FailureReply, SuccessReply>>(
+          replySlot)) } answers {Unit}
       setupSuccessfulGetConnection(databasePool, connection)
-
       preparedQueryCaptures = setupSuccessfulPreparedQuery(connection, sqlResult)
-
-
-      every { sqlResult.rowCount() } returns 1
-
-      verticle.storeAggregateSnapshot(StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
-
-      replySlot.captured shouldBe successReplyRight
-
-      commonStoreSnapshotPreparedQueryVerify()
-    }
-  }
-
-  @Test
-  fun storeAggregateSnapshot() {
-    runBlocking {
-      commonStoreSnapshotPreparedQuerySetup()
 
       every { sqlResult.rowCount() } returns 1
 
