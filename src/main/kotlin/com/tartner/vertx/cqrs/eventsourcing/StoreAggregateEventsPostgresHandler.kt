@@ -17,75 +17,47 @@
 package com.tartner.vertx.cqrs.eventsourcing
 
 import arrow.core.left
-import com.fasterxml.jackson.module.kotlin.readValue
 import com.tartner.vertx.AggregateEvent
 import com.tartner.vertx.CommandHandlingCoroutineDelegate
+import com.tartner.vertx.CoroutineDelegateAutoRegister
+import com.tartner.vertx.CoroutineDelegateAutoRegistrar
 import com.tartner.vertx.Reply
 import com.tartner.vertx.SuspendableReplyMessageHandler
 import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandFailedDueToException
+import com.tartner.vertx.commands.CommandRegistrar
 import com.tartner.vertx.cqrs.database.EventSourcingPool
 import com.tartner.vertx.debugIf
-import com.tartner.vertx.functional.toLeft
-import com.tartner.vertx.functional.toRight
+import com.tartner.vertx.kodein.PercentOfMaximumVerticleInstancesToDeploy
 import com.tartner.vertx.sqlclient.batchWithParamsAsync
 import com.tartner.vertx.sqlclient.getConnectionAsync
-import com.tartner.vertx.sqlclient.queryWithParamsAsync
 import com.tartner.vertx.successReplyRight
 import io.vertx.core.logging.Logger
 import io.vertx.core.logging.LoggerFactory
-import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.SqlConnection
 import io.vertx.sqlclient.Tuple
+import kotlinx.coroutines.CoroutineScope
 import org.intellij.lang.annotations.Language
 import kotlin.reflect.KClass
 
-class EventSourcedAggregateDataAccess(
+@PercentOfMaximumVerticleInstancesToDeploy(100)
+class StoreAggregateEventsPostgresHandler(
   private val databasePool: EventSourcingPool,
   private val databaseMapper: TypedObjectMapper,
-  private val log: Logger = LoggerFactory.getLogger(EventSourcedAggregateDataAccess::class.java)
-): CommandHandlingCoroutineDelegate {
-  override val commandWithReplyMessageHandlers: Map<KClass<*>, SuspendableReplyMessageHandler<*>>
-    = mapOf<KClass<*>, SuspendableReplyMessageHandler<*>>(
-      AggregateEventsQuery::class to ::loadAggregateEvents,
+  private val registrar: CoroutineDelegateAutoRegistrar,
+  private val log: Logger = LoggerFactory.getLogger(StoreAggregateEventsPostgresHandler::class.java)
+): CommandHandlingCoroutineDelegate, CoroutineDelegateAutoRegister {
+  @Language("PostgreSQL")
+  private val insertEventsSql = """
+    insert into event_sourcing.events (aggregate_id, version_number, data)
+    values ($1, $2, cast($3 as json))""".trimIndent()
+
+  override val commandWithReplyMessageHandlers: Map<KClass<*>, SuspendableReplyMessageHandler<*>> =
+    mapOf<KClass<*>, SuspendableReplyMessageHandler<*>>(
       StoreAggregateEventsCommand::class to ::storeAggregateEvents)
 
-  companion object {
-    @Language("PostgreSQL")
-    private val selectEventsSql = """
-      select data
-      from event_sourcing.events
-      where aggregate_id = $1 and version_number >= $2
-      order by version_number
-      """.trimIndent()
-
-    @Language("PostgreSQL")
-    private val insertEventsSql = """
-      insert into event_sourcing.events (aggregate_id, version_number, data)
-      values ($1, $2, cast($3 as json))""".trimIndent()
-  }
-
-  suspend fun loadAggregateEvents(query: AggregateEventsQuery, reply: Reply) {
-    var connection: SqlConnection? = null
-    try {
-      // TODO: error handling
-      connection = databasePool.getConnectionAsync()
-
-      val parameters = Tuple.of(query.aggregateId.id, query.aggregateVersion)
-      log.debugIf { "Running event load sql: '$selectEventsSql' with parameters: $parameters" }
-
-      val eventsResultSet: RowSet = connection.queryWithParamsAsync(selectEventsSql, parameters)
-
-      val events = eventsResultSet.map { databaseMapper.readValue<AggregateEvent>(it.getString(0)) }
-
-      reply(AggregateEventsQueryResponse(query.aggregateId, query.aggregateVersion, events)
-        .toRight())
-    } catch (ex: Throwable) {
-      log.warn("Exception while trying to load Aggregate Events", ex)
-      reply(CommandFailedDueToException(ex).toLeft())
-    } finally {
-      connection?.close()
-    }
+  override suspend fun registerCommands(scope: CoroutineScope, commandRegistrar: CommandRegistrar) {
+    registrar.registerHandlers(this, scope)
   }
 
   // TODO: where do we put the retry logic? Here or a higher level? And should it be a
@@ -104,7 +76,7 @@ class EventSourcedAggregateDataAccess(
       connection = databasePool.getConnectionAsync()
       connection.batchWithParamsAsync(insertEventsSql, eventsValues)
       reply(successReplyRight)
-    } catch (ex: Throwable) {
+    } catch (ex: Exception) {
       log.warn("Exception while trying to store Aggregate Events", ex)
       reply(CommandFailedDueToException(ex).left())
     } finally {

@@ -18,29 +18,31 @@ package com.tartner.vertx
 
 import com.tartner.vertx.commands.CommandRegistrar
 import com.tartner.vertx.commands.CommandSender
+import com.tartner.vertx.events.EventRegistrar
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import kotlin.reflect.KClass
+import kotlinx.coroutines.CoroutineScope
 
 interface CoroutineDelegate
 
 interface CommandHandlingCoroutineDelegate: CoroutineDelegate {
-  val commandHandlers: Map<KClass<*>, SuspendableMessageHandler<*>>; get() = emptyMap()
-  val commandWithReplyMessageHandlers: Map<KClass<*>, SuspendableReplyMessageHandler<*>>; get() = emptyMap()
+  suspend fun registerCommands(scope: CoroutineScope, commandRegistrar: CommandRegistrar)
 }
 
 interface EventHandlingCoroutineDelegate: CoroutineDelegate {
-  val eventHandlers: Map<KClass<*>, SuspendableMessageHandler<*>>; get() = emptyMap()
-  val eventAddressHandlers: Map<String, SuspendableMessageHandler<*>>; get() = emptyMap()
+  suspend fun registerEvents(scope: CoroutineScope, eventRegistrar: EventRegistrar)
 }
 
+typealias RouteRegistrar =
+  (route: String, handler: SuspendableMessageHandler<HandleSubrouterCallCommand>) -> Unit
+
 interface APICoroutineDelegate: CoroutineDelegate {
-  val routeHandlers: Map<String, SuspendableMessageHandler<HandleSubrouterCallCommand>>; get() = emptyMap()
+  suspend fun registerRoutes(scope: CoroutineScope, routeRegistrar: RouteRegistrar)
 }
 
 class CoroutineDelegateVerticleFactory(
   private val commandRegistrar: CommandRegistrar,
   private val commandSender: CommandSender,
-  private val eventRegistrar: CommandRegistrar
+  private val eventRegistrar: EventRegistrar
 ) {
   fun create(delegate: CoroutineDelegate) =
     CoroutineDelegateVerticle(commandRegistrar, commandSender, eventRegistrar, delegate)
@@ -53,7 +55,7 @@ class CoroutineDelegateVerticleFactory(
 class CoroutineDelegateVerticle(
   private val commandRegistrar: CommandRegistrar,
   private val commandSender: CommandSender,
-  private val eventRegistrar: CommandRegistrar,
+  private val eventRegistrar: EventRegistrar,
   private val delegate: CoroutineDelegate
 ): CoroutineVerticle() {
   override suspend fun start() {
@@ -70,30 +72,21 @@ class CoroutineDelegateVerticle(
     }
   }
 
-  private fun registerCommandHandlers(delegate: CommandHandlingCoroutineDelegate) {
-    delegate.commandHandlers.forEach { (commandClass, handler) ->
-      commandRegistrar.registerCommandHandler(this, commandClass, handler as SuspendableMessageHandler<Any>)
-    }
-
-    delegate.commandWithReplyMessageHandlers.forEach { (commandClass, handler) ->
-      commandRegistrar.registerCommandHandler(this, commandClass, handler as SuspendableReplyMessageHandler<Any>)
-    }
+  private suspend fun registerCommandHandlers(delegate: CommandHandlingCoroutineDelegate) {
+    delegate.registerCommands(this, commandRegistrar)
   }
 
-  private fun registerEventHandlers(delegate: EventHandlingCoroutineDelegate) {
-    delegate.eventHandlers.forEach { (commandClass, handler) ->
-      eventRegistrar.registerCommandHandler(this, commandClass, handler as SuspendableMessageHandler<Any>)
-    }
-
-    delegate.eventAddressHandlers.forEach { (commandClass, handler) ->
-      commandRegistrar.registerCommandHandler(this, commandClass, handler as SuspendableMessageHandler<Any>)
-    }
+  private suspend fun registerEventHandlers(delegate: EventHandlingCoroutineDelegate) {
+    delegate.registerEvents(this, eventRegistrar)
   }
 
-  private fun registerAPIHandlers(delegate: APICoroutineDelegate) {
-    delegate.routeHandlers.forEach { (route, handler) ->
-      commandRegistrar.registerCommandHandler(this, route, handler)
-      commandSender.send(AddRouteCommand(route, route))
-    }
+  private suspend fun registerAPIHandlers(delegate: APICoroutineDelegate) {
+    delegate.registerRoutes(this, ::registerRoute)
+  }
+
+  private fun registerRoute(route: String,
+    handler: SuspendableMessageHandler<HandleSubrouterCallCommand>) {
+    commandRegistrar.registerCommandHandler(this, route, handler)
+    commandSender.send(AddRouteCommand(route, route))
   }
 }

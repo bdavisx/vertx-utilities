@@ -20,6 +20,8 @@ package com.tartner.vertx.kodein
 import com.tartner.vertx.CoroutineDelegate
 import com.tartner.vertx.CoroutineDelegateVerticle
 import com.tartner.vertx.CoroutineDelegateVerticleFactory
+import com.tartner.vertx.ErrorReply
+import com.tartner.vertx.FailureReply
 import com.tartner.vertx.Reply
 import com.tartner.vertx.RouterVerticle
 import com.tartner.vertx.VCommand
@@ -141,8 +143,17 @@ class KodeinVerticleFactoryVerticle(
 
     val numberOfInstances: Int = determineNumberOfVerticleInstances(delegateClass)
 
+    val delegateProvider = kodein.AllProviders(TT(delegateClass)).firstOrNull()
+    if (delegateProvider == null) {
+      val message = "Unable to find provider for $delegateClass"
+      log.error(message)
+      reply(ErrorReply(message, this::class))
+      return
+    }
+
     val delegates: List<CoroutineDelegate> = (1..numberOfInstances).map {
-      kodein.AllProviders(TT(delegateClass)).first().invoke() }
+      delegateProvider.invoke()
+    }
 
     val verticles: List<CoroutineDelegateVerticle> = delegates.map {
       coroutineDelegateVerticleFactory.create(it) }

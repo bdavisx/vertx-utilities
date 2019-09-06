@@ -18,13 +18,17 @@
 package com.tartner.vertx.kodein
 
 import com.tartner.utilities.RandomGenerator
+import com.tartner.vertx.CoroutineDelegateAutoRegistrar
 import com.tartner.vertx.CoroutineDelegateVerticleFactory
 import com.tartner.vertx.IdGenerator
 import com.tartner.vertx.RouterVerticle
 import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandRegistrar
 import com.tartner.vertx.commands.CommandSender
-import com.tartner.vertx.cqrs.eventsourcing.EventSourcedAggregateDataAccess
+import com.tartner.vertx.cqrs.eventsourcing.AggregateEventsQueryHandler
+import com.tartner.vertx.cqrs.eventsourcing.LatestAggregateSnapshotQueryHandler
+import com.tartner.vertx.cqrs.eventsourcing.StoreAggregateEventsPostgresHandler
+import com.tartner.vertx.cqrs.eventsourcing.StoreAggregateSnapshotPostgresHandler
 import com.tartner.vertx.events.EventPublisher
 import com.tartner.vertx.events.EventRegistrar
 import io.vertx.core.Vertx
@@ -55,8 +59,13 @@ fun vertxUtilitiesModule(vertx: Vertx) = Kodein.Module("vertxUtilitiesModule") {
   bind<EventRegistrar>() with singleton { EventRegistrar(i(), i()) }
 
   bind<CoroutineDelegateVerticleFactory>() with singleton { CoroutineDelegateVerticleFactory(i(), i(), i()) }
+  bind<CoroutineDelegateAutoRegistrar>() with singleton { CoroutineDelegateAutoRegistrar(i(), i(), i()) }
   bind<KodeinVerticleFactoryVerticle>() with singleton { KodeinVerticleFactoryVerticle(kodein.direct, i(), i(), i(), i()) }
-  bind<EventSourcedAggregateDataAccess>() with singleton { EventSourcedAggregateDataAccess(i(), i()) }
+
+  bind<StoreAggregateEventsPostgresHandler>() with provider { StoreAggregateEventsPostgresHandler(i(), i(), i()) }
+  bind<StoreAggregateSnapshotPostgresHandler>() with provider { StoreAggregateSnapshotPostgresHandler(i(), i(), i()) }
+  bind<AggregateEventsQueryHandler>() with provider { AggregateEventsQueryHandler(i(), i(), i()) }
+  bind<LatestAggregateSnapshotQueryHandler>() with provider { LatestAggregateSnapshotQueryHandler(i(), i(), i()) }
 
   bind<RandomGenerator>() with singleton { RandomGenerator() }
   bind<IdGenerator>() with singleton { i<RandomGenerator>()::generateId }

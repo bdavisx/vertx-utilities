@@ -23,8 +23,8 @@ import com.tartner.test.utilities.setupFailedGetConnection
 import com.tartner.test.utilities.setupSuccessfulGetConnection
 import com.tartner.test.utilities.setupSuccessfulPreparedQuery
 import com.tartner.vertx.AggregateId
-import com.tartner.vertx.AggregateSnapshot
 import com.tartner.vertx.AggregateVersion
+import com.tartner.vertx.CoroutineDelegateAutoRegistrar
 import com.tartner.vertx.ErrorReply
 import com.tartner.vertx.FailureReply
 import com.tartner.vertx.Reply
@@ -50,18 +50,17 @@ import org.junit.Test
 import java.util.UUID
 import java.util.stream.Collector
 
-data class TestSnapshot(override val aggregateId: AggregateId,
-  override val aggregateVersion: AggregateVersion, val testData: String): AggregateSnapshot
-
-class EventSourcedAggregateDataAccessTest() {
+class StoreAggregateEventsPostgresHandlerTest() {
   val databasePool: EventSourcingPool = mockk()
   val databaseMapper: TypedObjectMapper = mockk()
   val reply: Reply = mockk()
   val connection: SqlConnection = mockk(relaxed = true)
+  val registrar: CoroutineDelegateAutoRegistrar = mockk(relaxed = true)
 
   val log: Logger = mockk(relaxed = true)
 
-  val storeAggregateSnapshotPostgresHandler: StoreAggregateSnapshotPostgresHandler = StoreAggregateSnapshotPostgresHandler(databasePool, databaseMapper, log)
+  val storeAggregateSnapshotPostgresHandler: StoreAggregateSnapshotPostgresHandler =
+    StoreAggregateSnapshotPostgresHandler(databasePool, databaseMapper, registrar, log)
 
   val aggregateId = AggregateId(UUID.randomUUID().toString())
   val aggregateVersion = AggregateVersion(1)

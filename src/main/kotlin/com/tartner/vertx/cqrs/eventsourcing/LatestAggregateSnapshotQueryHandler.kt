@@ -21,28 +21,35 @@ import arrow.core.toOption
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.tartner.vertx.AggregateSnapshot
 import com.tartner.vertx.CommandHandlingCoroutineDelegate
+import com.tartner.vertx.CoroutineDelegateAutoRegister
+import com.tartner.vertx.CoroutineDelegateAutoRegistrar
 import com.tartner.vertx.Reply
 import com.tartner.vertx.SuspendableReplyMessageHandler
 import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandFailedDueToException
+import com.tartner.vertx.commands.CommandRegistrar
 import com.tartner.vertx.cqrs.database.EventSourcingPool
 import com.tartner.vertx.debugIf
 import com.tartner.vertx.functional.toLeft
 import com.tartner.vertx.functional.toRight
+import com.tartner.vertx.kodein.PercentOfMaximumVerticleInstancesToDeploy
 import com.tartner.vertx.sqlclient.getConnectionAsync
 import com.tartner.vertx.sqlclient.queryWithParamsAsync
 import io.vertx.core.logging.Logger
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.sqlclient.SqlConnection
 import io.vertx.sqlclient.Tuple
+import kotlinx.coroutines.CoroutineScope
 import org.intellij.lang.annotations.Language
 import kotlin.reflect.KClass
 
-class LoadLatestAggregateSnapshotQueryHandler(
+@PercentOfMaximumVerticleInstancesToDeploy(100)
+class LatestAggregateSnapshotQueryHandler(
   private val databasePool: EventSourcingPool,
   private val databaseMapper: TypedObjectMapper,
-  private val log: Logger = LoggerFactory.getLogger(EventSourcedAggregateDataAccess::class.java)
-): CommandHandlingCoroutineDelegate {
+  private val registrar: CoroutineDelegateAutoRegistrar,
+  private val log: Logger = LoggerFactory.getLogger(StoreAggregateEventsPostgresHandler::class.java)
+): CommandHandlingCoroutineDelegate, CoroutineDelegateAutoRegister {
   @Language("PostgreSQL")
   private val selectSnapshotSql = """
       select data
@@ -53,6 +60,10 @@ class LoadLatestAggregateSnapshotQueryHandler(
 
   override val commandWithReplyMessageHandlers: Map<KClass<*>, SuspendableReplyMessageHandler<*>>
     = mapOf(LatestAggregateSnapshotQuery::class to ::loadLatestAggregateSnapshot)
+
+  override suspend fun registerCommands(scope: CoroutineScope, commandRegistrar: CommandRegistrar) {
+    registrar.registerHandlers(this, scope)
+  }
 
   suspend fun loadLatestAggregateSnapshot(query: LatestAggregateSnapshotQuery, reply: Reply) {
     var connection: SqlConnection? = null
@@ -67,7 +78,7 @@ class LoadLatestAggregateSnapshotQueryHandler(
       val possibleSnapshot: Option<AggregateSnapshot> = snapshotResultSet.map {
         databaseMapper.readValue<AggregateSnapshot>(it.getString(0)) }.firstOrNull().toOption()
       reply(LatestAggregateSnapshotQueryResponse(query.aggregateId, possibleSnapshot).toRight())
-    } catch (ex: Throwable) {
+    } catch (ex: Exception) {
       log.warn("Exception while trying to load Aggregate Snapshot", ex)
       reply(CommandFailedDueToException(ex).toLeft())
     } finally {
