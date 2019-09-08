@@ -72,7 +72,7 @@ class CommandSender(val eventBus: EventBus) {
     message.reply(reply, deliveryOptions)
   }
 
-  suspend fun <Failure: VSerializable, Success: VSerializable> sendA(command: Any)
+  suspend fun <Failure: VSerializable, Success: VSerializable> sendAsync(command: Any)
     : Either<Failure, Success>
       = awaitResult<Message<Either<Failure, Success>>> { send(command, it) }.body()
 }

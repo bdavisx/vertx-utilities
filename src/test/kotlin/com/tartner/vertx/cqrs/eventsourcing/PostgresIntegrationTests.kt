@@ -99,13 +99,13 @@ class PostgresIntegrationTests: AbstractVertxTest() {
           val aggregateId = AggregateId(UUID.randomUUID().toString())
           val snapshot = TestSnapshot(aggregateId, AggregateVersion(1), "This is test data")
 
-          val addResult = commandSender.sendA<FailureReply, SuccessReply>(
+          val addResult = commandSender.sendAsync<FailureReply, SuccessReply>(
             StoreAggregateSnapshotCommand(aggregateId, snapshot))
 
           log.debug(addResult.toString())
           context.assertTrue(addResult is Either.Right<*>)
 
-          val loadResult = commandSender.sendA<FailureReply, SuccessReply>(
+          val loadResult = commandSender.sendAsync<FailureReply, SuccessReply>(
             LatestAggregateSnapshotQuery(aggregateId))
 
           when (loadResult) {
@@ -168,7 +168,7 @@ class PostgresIntegrationTests: AbstractVertxTest() {
             events.add(EventSourcedTestAggregateNameChanged(aggregateId, AggregateVersion(aggregateVersion++), "New Name"))
           }
 
-          val storeResult = commandSender.sendA<FailureReply, SuccessReply>(
+          val storeResult = commandSender.sendAsync<FailureReply, SuccessReply>(
             StoreAggregateEventsCommand(aggregateId, events))
 
           when (storeResult) {
@@ -177,7 +177,7 @@ class PostgresIntegrationTests: AbstractVertxTest() {
               context.fail(storeResult.a.toString())
             }
             is Either.Right -> {
-              val loadResult = commandSender.sendA<FailureReply, SuccessReply>(
+              val loadResult = commandSender.sendAsync<FailureReply, SuccessReply>(
                 AggregateEventsQuery(aggregateId, Long.MIN_VALUE))
 
               when (loadResult) {
