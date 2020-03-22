@@ -38,7 +38,7 @@
 
         <kotlinCoroutinesVersion>1.3.4</kotlinCoroutinesVersion>
         <vertxVersion>4.0.0-milestone4</vertxVersion>
-        <jacksonVersion>2.9.8</jacksonVersion>
+        <jacksonVersion>2.10.3</jacksonVersion>
 
         <dokka.version>0.9.9</dokka.version>
         <arrow.version>0.8.2</arrow.version>
