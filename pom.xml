@@ -36,8 +36,8 @@
 
         <junit.version>4.12</junit.version>
 
-        <kotlinCoroutinesVersion>1.1.0</kotlinCoroutinesVersion>
-        <vertxVersion>3.8.0</vertxVersion>
+        <kotlinCoroutinesVersion>1.3.4</kotlinCoroutinesVersion>
+        <vertxVersion>4.0.0-milestone4</vertxVersion>
         <jacksonVersion>2.9.8</jacksonVersion>
 
         <dokka.version>0.9.9</dokka.version>
@@ -185,17 +185,6 @@
             <groupId>io.arrow-kt</groupId>
             <artifactId>arrow-syntax</artifactId>
             <version>${arrow.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.bouncycastle</groupId>
-            <artifactId>bcprov-jdk15on</artifactId>
-            <version>1.58</version>
-        </dependency>
-        <dependency>
-            <groupId>org.reflections</groupId>
-            <artifactId>reflections</artifactId>
-            <version>0.9.11</version>
         </dependency>
 
         <!-- Test Dependencies -->

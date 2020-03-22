@@ -56,6 +56,7 @@ class RouterVerticle(
 
     server = vertx.createHttpServer()
     mainRouter = Router.router(vertx)
+    // TODO: parameterize the port
     server.requestHandler(mainRouter).listen(8080)
   }
 

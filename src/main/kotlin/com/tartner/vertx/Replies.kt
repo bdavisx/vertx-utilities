@@ -29,4 +29,4 @@ val successReplyRight = DefaultSuccessReply.toRight()
 interface FailureReply: VMessage
 data class ErrorReply(val message: String, val sourceClass: KClass<*>): FailureReply
 
-typealias SuccessOrFailure = Either<FailureReply, SuccessReply>
+typealias FailureOrSuccess = Either<FailureReply, SuccessReply>

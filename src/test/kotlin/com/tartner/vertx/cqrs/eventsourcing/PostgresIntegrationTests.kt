@@ -77,7 +77,7 @@ class PostgresIntegrationTests: AbstractVertxTest() {
       try {
         val (_, kodein) = setupVertxKodein(listOf(), vertx, context)
         val retriever = ConfigRetriever.create(vertx)
-        val configuration: JsonObject = awaitResult { h -> retriever.getConfig(h) }
+        val configuration: JsonObject = awaitResult { retriever.getConfig(it) }
         val deploymentOptions = DeploymentOptions()
         deploymentOptions.config = configuration
 
