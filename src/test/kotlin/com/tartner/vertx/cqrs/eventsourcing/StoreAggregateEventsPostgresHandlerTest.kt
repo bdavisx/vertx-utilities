@@ -33,6 +33,7 @@ import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandFailedDueToException
 import com.tartner.vertx.cqrs.database.EventSourcingPool
 import com.tartner.vertx.successReplyRight
+import com.tartner.vertx.tupleShouldBe
 import io.kotest.assertions.fail
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
@@ -183,7 +184,9 @@ class StoreAggregateEventsPostgresHandlerTest() {
   private fun commonStoreSnapshotPreparedQueryVerify() {
     commonStoreSnapshotVerify()
     verifyAll {
-      preparedQueryCaptures.tupleSlot.captured shouldBe expectedTuple
+      val tuple = preparedQueryCaptures.tupleSlot.captured
+      tupleShouldBe(tuple, expectedTuple)
+
       preparedQueryCaptures.sqlSlot.captured shouldContain "insert into"
       preparedQueryCaptures.sqlSlot.captured shouldContain "snapshots"
       connection.toString()
@@ -192,6 +195,7 @@ class StoreAggregateEventsPostgresHandlerTest() {
       connection.close()
     }
   }
+
 }
 //          val loadResult = commandSender.sendA<FailureReply, SuccessReply>(
 //            LoadLatestAggregateSnapshotCommand(aggregateId))
