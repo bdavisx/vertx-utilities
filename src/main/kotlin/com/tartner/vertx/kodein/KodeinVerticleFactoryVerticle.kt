@@ -17,6 +17,7 @@
 
 package com.tartner.vertx.kodein
 
+import com.tartner.utilities.debugIf
 import com.tartner.vertx.CoroutineDelegate
 import com.tartner.vertx.CoroutineDelegateVerticle
 import com.tartner.vertx.CoroutineDelegateVerticleFactory
@@ -27,16 +28,15 @@ import com.tartner.vertx.VCommand
 import com.tartner.vertx.VEvent
 import com.tartner.vertx.VResponse
 import com.tartner.vertx.commands.CommandRegistrar
-import com.tartner.vertx.debugIf
 import com.tartner.vertx.events.EventPublisher
 import io.vertx.core.CompositeFuture
 import io.vertx.core.impl.cpu.CpuCoreSensor
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import org.kodein.di.DKodein
 import org.kodein.di.TT
+import org.slf4j.LoggerFactory
 import kotlin.math.max
 import kotlin.reflect.KClass
 import kotlin.reflect.full.findAnnotation

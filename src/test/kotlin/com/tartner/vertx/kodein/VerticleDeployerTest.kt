@@ -21,7 +21,6 @@ import com.tartner.vertx.setupVertxKodein
 import io.kotest.matchers.shouldBe
 import io.vertx.core.Promise
 import io.vertx.core.Vertx
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.VertxUnitRunner
 import io.vertx.kotlin.coroutines.CoroutineVerticle
@@ -36,6 +35,7 @@ import org.kodein.di.Kodein
 import org.kodein.di.generic.bind
 import org.kodein.di.generic.factory
 import org.kodein.di.generic.provider
+import org.slf4j.LoggerFactory
 
 @RunWith(VertxUnitRunner::class)
 class VerticleDeployerTest {
@@ -70,7 +70,7 @@ class VerticleDeployerTest {
 
         deploymentPromise.future().succeeded() shouldBe true
         deployment.deploymentId.isBlank() shouldBe false
-        log.debug(deployment)
+        log.debug(deployment.toString())
 
         async.complete()
       } catch(ex: Throwable) {

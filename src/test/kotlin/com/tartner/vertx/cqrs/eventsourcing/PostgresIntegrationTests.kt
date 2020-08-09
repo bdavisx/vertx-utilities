@@ -20,6 +20,7 @@ import arrow.core.Either
 import arrow.core.getOrElse
 import com.tartner.test.utilities.AbstractVertxTest
 import com.tartner.test.utilities.runUpdateSql
+import com.tartner.utilities.debugIf
 import com.tartner.vertx.AggregateEvent
 import com.tartner.vertx.AggregateId
 import com.tartner.vertx.AggregateSnapshot
@@ -29,7 +30,6 @@ import com.tartner.vertx.FailureReply
 import com.tartner.vertx.SuccessReply
 import com.tartner.vertx.awaitMessageResult
 import com.tartner.vertx.commands.CommandSender
-import com.tartner.vertx.debugIf
 import com.tartner.vertx.kodein.DeployVerticleDelegatesCommand
 import com.tartner.vertx.kodein.DeployVerticleInstancesResponse
 import com.tartner.vertx.kodein.KodeinVerticleFactoryVerticle
@@ -42,7 +42,6 @@ import io.vertx.config.ConfigRetriever
 import io.vertx.core.CompositeFuture
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.json.JsonObject
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.VertxUnitRunner
 import io.vertx.kotlin.coroutines.await
@@ -54,6 +53,7 @@ import kotlinx.coroutines.launch
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.kodein.di.generic.instance
+import org.slf4j.LoggerFactory
 import java.util.UUID
 import kotlin.reflect.KClass
 import kotlin.system.measureTimeMillis

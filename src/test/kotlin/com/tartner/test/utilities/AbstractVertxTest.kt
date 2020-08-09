@@ -16,15 +16,15 @@
 
 package com.tartner.test.utilities
 
-import com.tartner.vertx.debugIf
+import com.tartner.utilities.debugIf
 import io.vertx.core.AsyncResult
 import io.vertx.core.Vertx
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.VertxUnitRunner
 import org.junit.After
 import org.junit.Before
 import org.junit.runner.RunWith
+import org.slf4j.LoggerFactory
 
 fun <T> TestContext.assertResultTrue(result: AsyncResult<T>) {
   if (result.failed()) {

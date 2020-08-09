@@ -17,14 +17,14 @@
 
 package com.tartner.vertx.kodein
 
-import com.tartner.vertx.debugIf
+import com.tartner.utilities.debugIf
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.Promise
 import io.vertx.core.Verticle
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
-import io.vertx.core.logging.Logger
-import io.vertx.core.logging.LoggerFactory
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 
 data class VerticleDeployment(val instance: Verticle, val deploymentId: String)
 

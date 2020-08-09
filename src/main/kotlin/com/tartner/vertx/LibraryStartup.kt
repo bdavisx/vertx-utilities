@@ -16,6 +16,7 @@
 
 package com.tartner.vertx
 
+import com.tartner.utilities.debugIf
 import com.tartner.vertx.codecs.EventBusJacksonJsonCodec
 import com.tartner.vertx.commands.CommandSender
 import com.tartner.vertx.cqrs.eventsourcing.AggregateEventsQueryHandler
@@ -30,11 +31,11 @@ import com.tartner.vertx.kodein.VerticleDeployer
 import com.tartner.vertx.kodein.i
 import io.vertx.core.CompositeFuture
 import io.vertx.core.Vertx
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import org.kodein.di.DKodein
 import org.kodein.di.generic.instance
+import org.slf4j.LoggerFactory
 import kotlin.reflect.KClass
 
 private val log = LoggerFactory.getLogger(VSerializable::class.java)

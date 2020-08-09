@@ -16,10 +16,9 @@
 
 package com.tartner.vertx.cqrs.database
 
-import com.tartner.vertx.debugIf
+import com.tartner.utilities.debugIf
 import com.tartner.vertx.kodein.i
 import io.vertx.core.Vertx
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.kotlin.sqlclient.poolOptionsOf
 import io.vertx.pgclient.PgConnectOptions
 import io.vertx.pgclient.PgPool
@@ -27,6 +26,7 @@ import io.vertx.sqlclient.Pool
 import org.kodein.di.Kodein
 import org.kodein.di.generic.bind
 import org.kodein.di.generic.singleton
+import org.slf4j.LoggerFactory
 
 /*
     By inheriting AbstractPool, we can create a Type specific class that can act as a AbstractPool. This

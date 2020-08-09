@@ -17,6 +17,7 @@
 package com.tartner.vertx.cqrs.eventsourcing
 
 import com.fasterxml.jackson.module.kotlin.readValue
+import com.tartner.utilities.debugIf
 import com.tartner.vertx.AggregateEvent
 import com.tartner.vertx.CommandHandlingCoroutineDelegate
 import com.tartner.vertx.CoroutineDelegateAutoRegister
@@ -27,20 +28,19 @@ import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandFailedDueToException
 import com.tartner.vertx.commands.CommandRegistrar
 import com.tartner.vertx.cqrs.database.EventSourcingPool
-import com.tartner.vertx.debugIf
 import com.tartner.vertx.functional.toLeft
 import com.tartner.vertx.functional.toRight
 import com.tartner.vertx.kodein.PercentOfMaximumVerticleInstancesToDeploy
 import com.tartner.vertx.sqlclient.getConnectionAsync
 import com.tartner.vertx.sqlclient.queryWithParamsAsync
-import io.vertx.core.logging.Logger
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.SqlConnection
 import io.vertx.sqlclient.Tuple
 import kotlinx.coroutines.CoroutineScope
 import org.intellij.lang.annotations.Language
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import kotlin.reflect.KClass
 
 @PercentOfMaximumVerticleInstancesToDeploy(100)

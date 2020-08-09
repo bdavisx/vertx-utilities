@@ -17,17 +17,17 @@
 
 package com.tartner.vertx.commands
 
+import com.tartner.utilities.debugIf
 import com.tartner.vertx.MessageHandler
 import com.tartner.vertx.OpenForTesting
 import com.tartner.vertx.ReplyMessageHandler
 import com.tartner.vertx.SuspendableMessageHandler
 import com.tartner.vertx.SuspendableReplyMessageHandler
-import com.tartner.vertx.debugIf
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.eventbus.MessageConsumer
-import io.vertx.core.logging.LoggerFactory
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import org.slf4j.LoggerFactory
 import kotlin.reflect.KClass
 
 /**

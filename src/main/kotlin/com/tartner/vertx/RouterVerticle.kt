@@ -15,17 +15,18 @@
  */
 package com.tartner.vertx
 
+import com.tartner.utilities.debugIf
 import com.tartner.vertx.commands.CommandRegistrar
 import com.tartner.vertx.commands.CommandSender
 import com.tartner.vertx.events.EventPublisher
 import com.tartner.vertx.events.EventRegistrar
 import com.tartner.vertx.kodein.PercentOfMaximumVerticleInstancesToDeploy
 import io.vertx.core.http.HttpServer
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.web.Route
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import org.slf4j.LoggerFactory
 
 /** Note that there's no reply to this command, because the actual adding is done async. */
 data class AddRouteCommand(val handlerAddress: String, val route: String): VCommand

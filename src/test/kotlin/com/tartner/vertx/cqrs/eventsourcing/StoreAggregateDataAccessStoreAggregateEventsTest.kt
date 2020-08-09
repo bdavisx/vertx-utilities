@@ -40,7 +40,6 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verifyAll
-import io.vertx.core.logging.Logger
 import io.vertx.sqlclient.PreparedQuery
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
@@ -48,6 +47,7 @@ import io.vertx.sqlclient.SqlConnection
 import io.vertx.sqlclient.Tuple
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
+import org.slf4j.Logger
 import java.util.UUID
 
 class StoreAggregateDataAccessStoreAggregateEventsTest() {

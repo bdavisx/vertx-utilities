@@ -18,17 +18,17 @@
 package com.tartner.vertx.commands
 
 import arrow.core.Either
+import com.tartner.utilities.debugIf
 import com.tartner.vertx.OpenForTesting
 import com.tartner.vertx.VSerializable
 import com.tartner.vertx.codecs.EventBusJacksonJsonCodec
-import com.tartner.vertx.debugIf
 import io.vertx.core.AsyncResult
 import io.vertx.core.Handler
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.eventbus.Message
-import io.vertx.core.logging.LoggerFactory
 import io.vertx.kotlin.coroutines.awaitResult
+import org.slf4j.LoggerFactory
 
 /**
  This evolved from the CommandBus, but once I added a DI library that would work with Verticle's, I

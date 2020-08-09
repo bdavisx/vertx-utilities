@@ -41,13 +41,13 @@ import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verifyAll
-import io.vertx.core.logging.Logger
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.SqlConnection
 import io.vertx.sqlclient.Tuple
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
+import org.slf4j.Logger
 import java.util.UUID
 
 class StoreAggregateEventsPostgresHandlerTest() {
@@ -184,8 +184,7 @@ class StoreAggregateEventsPostgresHandlerTest() {
   private fun commonStoreSnapshotPreparedQueryVerify() {
     commonStoreSnapshotVerify()
     verifyAll {
-      val tuple = preparedQueryCaptures.tupleSlot.captured
-      tupleShouldBe(tuple, expectedTuple)
+      tupleShouldBe(preparedQueryCaptures.tupleSlot.captured, expectedTuple)
 
       preparedQueryCaptures.sqlSlot.captured shouldContain "insert into"
       preparedQueryCaptures.sqlSlot.captured shouldContain "snapshots"
