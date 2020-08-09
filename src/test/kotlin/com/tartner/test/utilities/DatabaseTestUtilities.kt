@@ -21,17 +21,18 @@ import com.tartner.vertx.cqrs.database.EventSourcingPool
 import com.tartner.vertx.sqlclient.updateWithParamsAsync
 import io.mockk.CapturingSlot
 import io.mockk.coEvery
+import io.mockk.mockk
 import io.mockk.slot
 import io.vertx.core.AsyncResult
+import io.vertx.core.Future
 import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.awaitResult
+import io.vertx.sqlclient.PreparedQuery
 import io.vertx.sqlclient.Row
+import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.SqlConnection
-import io.vertx.sqlclient.SqlResult
 import io.vertx.sqlclient.Tuple
-import io.vertx.sqlclient.impl.command.CommandResponse
-import java.util.stream.Collector
 
 data class PreparedQueryCaptures(
   val sqlSlot: CapturingSlot<String>, val tupleSlot: CapturingSlot<Tuple>)
@@ -55,32 +56,39 @@ suspend fun runUpdateSql(sql: String, parameters: Tuple, vertx: Vertx,
 fun setupSuccessfulGetConnection(mockDatabasePool: EventSourcingPool, connection: SqlConnection) {
   val getConnectionSlot = slot<Handler<AsyncResult<SqlConnection>>>()
   coEvery { mockDatabasePool.getConnection(capture(getConnectionSlot)) } answers {
-    getConnectionSlot.captured.handle(CommandResponse.success(connection))
+    getConnectionSlot.captured.handle(Future.succeededFuture(connection))
   }
 }
 
 fun setupFailedGetConnection(mockDatabasePool: EventSourcingPool, failureException: Throwable) {
   val getConnectionSlot = slot<Handler<AsyncResult<SqlConnection>>>()
   coEvery { mockDatabasePool.getConnection(capture(getConnectionSlot)) } answers {
-    getConnectionSlot.captured.handle(CommandResponse.failure(failureException))
+    getConnectionSlot.captured.handle(Future.failedFuture(failureException))
   }
 }
 
 /**
- * Prepares a mockConnection to "return" a SqlResult<List<Row>>. Returns captures that will hold
+ * Prepares a mockConnection to "return" a RowSet<Row>. Returns captures that will hold
  * the sql and parameters sent to the query.
  */
-fun setupSuccessfulPreparedQuery(mockConnection: SqlConnection , sqlResult: SqlResult<List<Row>>)
+fun setupSuccessfulPreparedQuery(mockConnection: SqlConnection , sqlResult: RowSet<Row>)
   : PreparedQueryCaptures {
-  val sqlSlot: CapturingSlot<String> = slot<String>()
-  val tupleSlot: CapturingSlot<Tuple> = slot<Tuple>()
-  val preparedQuerySlot = slot<Handler<AsyncResult<SqlResult<List<Row>>>>>()
+  val sqlSlot: CapturingSlot<String> = slot()
+  val tupleSlot: CapturingSlot<Tuple> = slot()
+  val preparedQuerySlot = slot<Handler<AsyncResult<RowSet<Row>>>>()
+
+  val mockPreparedQuery = mockk<PreparedQuery<RowSet<Row>>>()
 
   coEvery {
-    mockConnection.preparedQuery(capture(sqlSlot), capture(tupleSlot),
-      any<Collector<Row, *, List<Row>>>(), capture(preparedQuerySlot))
+    mockConnection.preparedQuery(capture(sqlSlot))
   } answers {
-    preparedQuerySlot.captured.handle(CommandResponse.success(sqlResult))
+    mockPreparedQuery
+  }
+
+  coEvery {
+    mockPreparedQuery.execute(capture(tupleSlot), capture(preparedQuerySlot))
+  } answers {
+    preparedQuerySlot.captured.handle(Future.succeededFuture(sqlResult))
     mockConnection
   }
 

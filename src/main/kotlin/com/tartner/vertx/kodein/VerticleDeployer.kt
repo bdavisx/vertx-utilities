@@ -19,7 +19,7 @@ package com.tartner.vertx.kodein
 
 import com.tartner.vertx.debugIf
 import io.vertx.core.DeploymentOptions
-import io.vertx.core.Future
+import io.vertx.core.Promise
 import io.vertx.core.Verticle
 import io.vertx.core.Vertx
 import io.vertx.core.json.JsonObject
@@ -34,15 +34,15 @@ class VerticleDeployer {
   var defaultConfig: JsonObject = JsonObject()
 
   fun deployVerticles(vertx: Vertx, verticles: List<Verticle>)
-    : List<Future<VerticleDeployment>> = deployVerticles(vertx, verticles, defaultConfig)
+    : List<Promise<VerticleDeployment>> = deployVerticles(vertx, verticles, defaultConfig)
 
   fun deployVerticles(vertx: Vertx, verticles: List<Verticle>, config: JsonObject)
-    : List<Future<VerticleDeployment>> {
+    : List<Promise<VerticleDeployment>> {
 
     val deploymentOptions = DeploymentOptions().setWorker(false).setConfig(config)
 
     return verticles.map { verticle ->
-      val deploymentFuture = Future.future<VerticleDeployment>()
+      val deploymentFuture = Promise.promise<VerticleDeployment>()
       vertx.deployVerticle(verticle, deploymentOptions) { result ->
         if (result.succeeded()) {
           log.debugIf { "Successful deployment of $verticle" }

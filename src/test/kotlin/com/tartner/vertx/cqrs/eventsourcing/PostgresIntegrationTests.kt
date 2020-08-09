@@ -36,8 +36,8 @@ import com.tartner.vertx.kodein.KodeinVerticleFactoryVerticle
 import com.tartner.vertx.kodein.VerticleDeployer
 import com.tartner.vertx.kodein.i
 import com.tartner.vertx.setupVertxKodein
-import io.kotlintest.fail
-import io.kotlintest.shouldBe
+import io.kotest.assertions.fail
+import io.kotest.matchers.shouldBe
 import io.vertx.config.ConfigRetriever
 import io.vertx.core.CompositeFuture
 import io.vertx.core.DeploymentOptions
@@ -83,7 +83,8 @@ class PostgresIntegrationTests: AbstractVertxTest() {
 
         val factoryVerticle = kodein.instance<KodeinVerticleFactoryVerticle>()
         val verticleDeployer = kodein.instance<VerticleDeployer>()
-        CompositeFuture.all(verticleDeployer.deployVerticles(vertx, listOf(factoryVerticle))).await()
+        CompositeFuture.all(
+          verticleDeployer.deployVerticles(vertx, listOf(factoryVerticle)).map{it.future()}).await()
         log.debug("VerticleFactoryVerticle deployed")
 
         val commandSender: CommandSender = kodein.i()
@@ -149,7 +150,8 @@ class PostgresIntegrationTests: AbstractVertxTest() {
 
         val factoryVerticle = kodein.instance<KodeinVerticleFactoryVerticle>()
         val verticleDeployer = kodein.instance<VerticleDeployer>()
-        CompositeFuture.all(verticleDeployer.deployVerticles(vertx, listOf(factoryVerticle))).await()
+        CompositeFuture.all(
+          verticleDeployer.deployVerticles(vertx, listOf(factoryVerticle)).map{it.future()}).await()
         log.debug("VerticleFactoryVerticle deployed")
 
         delegatesToDeploy.forEach { classToDeploy ->

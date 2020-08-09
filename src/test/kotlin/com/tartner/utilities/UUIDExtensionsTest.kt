@@ -17,7 +17,7 @@
 
 package com.tartner.utilities
 
-import io.kotlintest.shouldBe
+import io.kotest.matchers.shouldBe
 import org.junit.Test
 import java.util.UUID
 

@@ -33,22 +33,21 @@ import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandFailedDueToException
 import com.tartner.vertx.cqrs.database.EventSourcingPool
 import com.tartner.vertx.successReplyRight
-import io.kotlintest.fail
-import io.kotlintest.matchers.string.shouldContain
-import io.kotlintest.shouldBe
+import io.kotest.assertions.fail
+import io.kotest.matchers.shouldBe
+import io.kotest.matchers.string.shouldContain
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.slot
 import io.mockk.verifyAll
 import io.vertx.core.logging.Logger
 import io.vertx.sqlclient.Row
+import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.SqlConnection
-import io.vertx.sqlclient.SqlResult
 import io.vertx.sqlclient.Tuple
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import java.util.UUID
-import java.util.stream.Collector
 
 class StoreAggregateEventsPostgresHandlerTest() {
   val databasePool: EventSourcingPool = mockk()
@@ -69,7 +68,7 @@ class StoreAggregateEventsPostgresHandlerTest() {
 
   val jsonText = """{ "key": "value" }"""
   val expectedTuple = Tuple.of(aggregateId.id, aggregateVersion.version, jsonText)
-  val sqlResult: SqlResult<List<Row>> = mockk()
+  val sqlResult: RowSet<Row> = mockk()
 
   val replySlot = slot<Either<FailureReply, SuccessReply>>()
 
@@ -188,7 +187,7 @@ class StoreAggregateEventsPostgresHandlerTest() {
       preparedQueryCaptures.sqlSlot.captured shouldContain "insert into"
       preparedQueryCaptures.sqlSlot.captured shouldContain "snapshots"
       connection.toString()
-      connection.preparedQuery(any(), expectedTuple, any<Collector<Row, *, List<Row>>>(), any())
+      connection.preparedQuery(any())
       sqlResult.rowCount()
       connection.close()
     }

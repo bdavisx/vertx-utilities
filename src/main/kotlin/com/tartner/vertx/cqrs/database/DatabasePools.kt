@@ -29,13 +29,12 @@ import org.kodein.di.generic.bind
 import org.kodein.di.generic.singleton
 
 /*
-    By inheriting JDBCClient, we can create a Type specific class that can act as a JDBCClient. This
-    allows us to actually specify a particular interface as a dependency (e.g. QueryJDBCClient,
+    By inheriting AbstractPool, we can create a Type specific class that can act as a AbstractPool. This
+    allows us to actually specify a particular interface as a dependency (e.g. QueryAbstractPool,
     which is a JDBC Client specifically for the query side in CQRS.
 
-    We don't change JDBCClient or add to it in any way. This is specifically about declaring a
-    dependency on a specific database connection. The only QueryJDBCClient that will be created
-    will be the one for Querying.
+    We don't change AbstractPool or add to it in any way. This is specifically about declaring a
+    dependency on a specific database connection.
 */
 
 class EventSourcingPool(pool: Pool): AbstractPool(pool)
@@ -60,14 +59,14 @@ abstract class AbstractPool(private val pool: Pool): Pool by pool {
   companion object {
     val log = LoggerFactory.getLogger(EventSourcingPool::class.java)
 
-    fun createPool(vertx: Vertx, environment: Map<String, String>,
-      environmentNamePrefix: String): Pool {
+    fun createPool(vertx: Vertx, environment: Map<String, String>, environmentNamePrefix: String)
+      : Pool {
 
       val databaseConfiguration = createDatabaseConfiguration(environment, environmentNamePrefix)
       log.debugIf { "prefix: $environmentNamePrefix;  Config: $databaseConfiguration" }
 
       // Pool Options
-      val maxPoolSize = environment.getOrDefault(environmentNamePrefix+"MaxPoolSize", "5").toInt()
+      val maxPoolSize = environment.getOrDefault("${environmentNamePrefix}MaxPoolSize","5").toInt()
       val poolOptions = poolOptionsOf(maxSize = maxPoolSize)
 
       // Create the pool from the data object
@@ -94,9 +93,6 @@ abstract class AbstractPool(private val pool: Pool): Pool by pool {
     }
 
     private fun configurationValue(environment: Map<String, String>, environmentNamePrefix: String,
-      value: String) = environment.getValue(environmentNamePrefix+value)
+      value: String) = environment.getValue("$environmentNamePrefix$value")
   }
 }
-
-
-

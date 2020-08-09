@@ -46,7 +46,8 @@ suspend fun startLibrary(vertx: Vertx, kodein: DKodein) {
   log.debug("Deploying VerticleFactoryVerticle")
   val factoryVerticle = kodein.instance<KodeinVerticleFactoryVerticle>()
   val verticleDeployer = kodein.instance<VerticleDeployer>()
-  CompositeFuture.all(verticleDeployer.deployVerticles(vertx, listOf(factoryVerticle))).await()
+  CompositeFuture.all(
+    verticleDeployer.deployVerticles(vertx, listOf(factoryVerticle)).map{it.future()}).await()
   log.debug("VerticleFactoryVerticle deployed")
 
   val startupVerticlesLists =

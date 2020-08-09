@@ -21,7 +21,6 @@ import com.tartner.vertx.CoroutineDelegate
 import com.tartner.vertx.CoroutineDelegateVerticle
 import com.tartner.vertx.CoroutineDelegateVerticleFactory
 import com.tartner.vertx.ErrorReply
-import com.tartner.vertx.FailureReply
 import com.tartner.vertx.Reply
 import com.tartner.vertx.RouterVerticle
 import com.tartner.vertx.VCommand
@@ -122,16 +121,16 @@ class KodeinVerticleFactoryVerticle(
 
     log.debug("Deploying $numberOfInstances instances of ${verticleClass.qualifiedName}")
 
-    val deploymentFutures = verticleDeployer.deployVerticles(vertx, verticles)
-    CompositeFuture.all(deploymentFutures).await()
+    val deploymentPromises = verticleDeployer.deployVerticles(vertx, verticles)
+    CompositeFuture.all(deploymentPromises.map {it.future()}).await()
 
     if(verticleClass != RouterVerticle::class) {
-      deploymentFutures.forEach { log.debug("Deployment Future: ${it}") }
+      deploymentPromises.forEach { log.debug("Deployment Future: ${it}") }
     }
 
     eventPublisher.publish(VerticleInstancesDeployedEvent(verticleClass, numberOfInstances))
 
-    val response = DeployVerticleInstancesResponse(deploymentFutures.map { it.result() })
+    val response = DeployVerticleInstancesResponse(deploymentPromises.map { it.future().result() })
     reply(response)
   }
 
@@ -161,12 +160,12 @@ class KodeinVerticleFactoryVerticle(
     log.debug("Deploying $numberOfInstances instances of CoroutineDelegateVerticle for ${delegateClass.qualifiedName}")
 
     val deploymentFutures = verticleDeployer.deployVerticles(vertx, verticles)
-    CompositeFuture.all(deploymentFutures).await()
+    CompositeFuture.all(deploymentFutures.map{it.future()}).await()
 
     eventPublisher.publish(VerticleInstancesDeployedEvent(verticleClass, numberOfInstances))
     eventPublisher.publish(VerticleDelegateInstancesDeployedEvent(delegateClass, numberOfInstances))
 
-    val response = DeployVerticleInstancesResponse(deploymentFutures.map { it.result() })
+    val response = DeployVerticleInstancesResponse(deploymentFutures.map { it.future().result() })
     reply(response)
   }
 

@@ -35,6 +35,7 @@ import com.tartner.vertx.sqlclient.getConnectionAsync
 import com.tartner.vertx.sqlclient.queryWithParamsAsync
 import io.vertx.core.logging.Logger
 import io.vertx.core.logging.LoggerFactory
+import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.SqlConnection
 import io.vertx.sqlclient.Tuple
@@ -74,7 +75,7 @@ class AggregateEventsQueryHandler(
       val parameters = Tuple.of(query.aggregateId.id, query.aggregateVersion)
       log.debugIf { "Running event load sql: '$selectEventsSql' with parameters: $parameters" }
 
-      val eventsResultSet: RowSet = connection.queryWithParamsAsync(selectEventsSql, parameters)
+      val eventsResultSet: RowSet<Row> = connection.queryWithParamsAsync(selectEventsSql, parameters)
 
       val events = eventsResultSet.map { databaseMapper.readValue<AggregateEvent>(it.getString(0)) }
 

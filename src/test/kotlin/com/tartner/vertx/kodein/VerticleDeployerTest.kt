@@ -18,8 +18,8 @@
 package com.tartner.vertx.kodein
 
 import com.tartner.vertx.setupVertxKodein
-import io.kotlintest.shouldBe
-import io.vertx.core.Future
+import io.kotest.matchers.shouldBe
+import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.core.logging.LoggerFactory
 import io.vertx.ext.unit.TestContext
@@ -65,10 +65,10 @@ class VerticleDeployerTest {
 
         futures.count() shouldBe 1
 
-        val deploymentFuture: Future<VerticleDeployment> = futures.first()
-        val deployment = deploymentFuture.await()
+        val deploymentPromise: Promise<VerticleDeployment> = futures.first()
+        val deployment = deploymentPromise.future().await()
 
-        deploymentFuture.succeeded() shouldBe true
+        deploymentPromise.future().succeeded() shouldBe true
         deployment.deploymentId.isBlank() shouldBe false
         log.debug(deployment)
 

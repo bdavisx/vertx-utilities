@@ -17,7 +17,7 @@
 
 package com.tartner.vertx
 
-import io.kotlintest.shouldBe
+import io.kotest.matchers.shouldBe
 import org.junit.Test
 
 class DequeForTestingTest {

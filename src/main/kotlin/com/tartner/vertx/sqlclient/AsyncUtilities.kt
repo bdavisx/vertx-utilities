@@ -21,23 +21,19 @@ import io.vertx.sqlclient.Pool
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.SqlConnection
-import io.vertx.sqlclient.SqlResult
 import io.vertx.sqlclient.Tuple
-import java.util.stream.Collectors
 
 inline suspend fun Pool.getConnectionAsync() =
   awaitResult<SqlConnection> { this.getConnection(it) }
 
-inline suspend fun SqlConnection.queryAsync(queryText: String): RowSet =
-  awaitResult {this.query(queryText, it)}
+inline suspend fun SqlConnection.queryAsync(queryText: String): RowSet<Row> =
+  awaitResult {this.query(queryText).execute(it)}
 
-inline suspend fun SqlConnection.queryWithParamsAsync(queryText: String, params: Tuple): RowSet =
-  awaitResult { this.preparedQuery(queryText, params, it) }
+inline suspend fun SqlConnection.queryWithParamsAsync(queryText: String, params: Tuple): RowSet<Row> =
+  awaitResult { this.preparedQuery(queryText).execute(params, it) }
 
-inline suspend fun SqlConnection.updateWithParamsAsync(queryText: String, params: Tuple)
-  : SqlResult<List<Row>> =
-  awaitResult { this.preparedQuery(queryText, params, Collectors.toList(), it) }
+inline suspend fun SqlConnection.updateWithParamsAsync(queryText: String, params: Tuple): RowSet<Row> =
+  awaitResult { this.preparedQuery(queryText).execute(params, it) }
 
-inline suspend fun SqlConnection.batchWithParamsAsync(queryText: String, params: List<Tuple>)
-  : SqlResult<List<Row>> =
-  awaitResult { this.preparedBatch(queryText, params, Collectors.toList(), it) }
+inline suspend fun SqlConnection.batchWithParamsAsync(queryText: String, params: List<Tuple>): RowSet<Row> =
+  awaitResult { this.preparedQuery(queryText).executeBatch(params, it) }
