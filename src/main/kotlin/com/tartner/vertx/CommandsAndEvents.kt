@@ -18,6 +18,8 @@
 package com.tartner.vertx
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo
+import com.tartner.utilities.toStringFast
+import java.util.UUID
 
 // MUSTFIX: Docs for these interfaces
 
@@ -57,8 +59,33 @@ interface HasAggregateVersion: HasAggregateId, Comparable<HasAggregateVersion> {
     aggregateVersion.compareTo(other.aggregateVersion)
 }
 
-interface AggregateCommand: VCommand, HasAggregateId
-interface AggregateEvent: VMessage, HasAggregateId, HasAggregateVersion
+///////////////////////
+
+annotation class EventHandler
+interface DomainEvent: VSerializable, HasCorrelationId
+
+interface AggregateEvent: DomainEvent, HasAggregateVersion
+
+/** This indicates an error happened that needs to be handled at a higher/different level. */
+interface ErrorEvent: DomainEvent
+
+data class CorrelationId(val id: String)
+interface HasCorrelationId {
+  val correlationId: CorrelationId
+}
+
+fun newId() = UUID.randomUUID().toStringFast()
+fun newCorrelationId() = CorrelationId(newId())
+
+annotation class CommandHandler
+
+interface DomainCommand: VSerializable, HasCorrelationId
+
+interface AggregateCommand: DomainCommand, HasAggregateId
+
+interface CommandReply: VSerializable
+
+interface Query: VSerializable, HasCorrelationId
+interface QueryReply: VSerializable
 
 interface AggregateSnapshot: VSerializable, HasAggregateVersion
-

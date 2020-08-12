@@ -20,24 +20,30 @@ import com.tartner.vertx.AggregateCommand
 import com.tartner.vertx.AggregateEvent
 import com.tartner.vertx.AggregateId
 import com.tartner.vertx.AggregateVersion
+import com.tartner.vertx.CorrelationId
+import com.tartner.vertx.newCorrelationId
 
 sealed class TestEventSourcedAggregateCommands(): AggregateCommand
 sealed class TestEventSourcedAggregateEvents(): AggregateEvent
 
 data class CreateEventSourcedTestAggregateCommand(
-  override val aggregateId: AggregateId, val name: String)
+  override val aggregateId: AggregateId, val name: String,
+  override val correlationId: CorrelationId = newCorrelationId())
   : TestEventSourcedAggregateCommands(), AggregateCommand
 
 data class ChangeEventSourcedTestAggregateNameCommand(
-  override val aggregateId: AggregateId, val name: String)
+  override val aggregateId: AggregateId, val name: String,
+  override val correlationId: CorrelationId = newCorrelationId())
   : TestEventSourcedAggregateCommands(), AggregateCommand
 
 data class EventSourcedTestAggregateCreated(override val aggregateId: AggregateId,
-  override val aggregateVersion: AggregateVersion, val name: String)
+  override val aggregateVersion: AggregateVersion, val name: String,
+  override val correlationId: CorrelationId = newCorrelationId())
   : TestEventSourcedAggregateEvents()
 
 data class EventSourcedTestAggregateNameChanged(override val aggregateId: AggregateId,
-  override val aggregateVersion: AggregateVersion, val name: String)
+  override val aggregateVersion: AggregateVersion, val name: String,
+  override val correlationId: CorrelationId = newCorrelationId())
   : TestEventSourcedAggregateEvents()
 
 //data class CreateEventSourcedTestAggregateValidationFailed(val validationIssues: ValidationIssues)

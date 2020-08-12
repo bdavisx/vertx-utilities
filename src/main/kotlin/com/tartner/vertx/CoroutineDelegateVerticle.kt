@@ -33,7 +33,7 @@ interface EventHandlingCoroutineDelegate: CoroutineDelegate {
 }
 
 typealias RouteRegistrar =
-  (route: String, handler: SuspendableMessageHandler<HandleSubrouterCallCommand>) -> Unit
+  suspend (route: String, handler: SuspendableMessageHandler<HandleSubrouterCallCommand>) -> Unit
 
 interface APICoroutineDelegate: CoroutineDelegate {
   suspend fun registerRoutes(scope: CoroutineScope, routeRegistrar: RouteRegistrar)
@@ -42,10 +42,12 @@ interface APICoroutineDelegate: CoroutineDelegate {
 class CoroutineDelegateVerticleFactory(
   private val commandRegistrar: CommandRegistrar,
   private val commandSender: CommandSender,
-  private val eventRegistrar: EventRegistrar
+  private val eventRegistrar: EventRegistrar,
+  private val routerVerticle: RouterVerticle
 ) {
   fun create(delegate: CoroutineDelegate) =
-    CoroutineDelegateVerticle(commandRegistrar, commandSender, eventRegistrar, delegate)
+    CoroutineDelegateVerticle(commandRegistrar, commandSender, eventRegistrar, routerVerticle,
+      delegate)
 }
 
 /**
@@ -56,6 +58,7 @@ class CoroutineDelegateVerticle(
   private val commandRegistrar: CommandRegistrar,
   private val commandSender: CommandSender,
   private val eventRegistrar: EventRegistrar,
+  private val routerVerticle: RouterVerticle,
   private val delegate: CoroutineDelegate
 ): CoroutineVerticle() {
   override suspend fun start() {
@@ -84,9 +87,9 @@ class CoroutineDelegateVerticle(
     delegate.registerRoutes(this, ::registerRoute)
   }
 
-  private fun registerRoute(route: String,
+  suspend private fun registerRoute(route: String,
     handler: SuspendableMessageHandler<HandleSubrouterCallCommand>) {
     commandRegistrar.registerCommandHandler(this, route, handler)
-    commandSender.send(AddRouteCommand(route, route))
+    routerVerticle.addRoute(route, route)
   }
 }

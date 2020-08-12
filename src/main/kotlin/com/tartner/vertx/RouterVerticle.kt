@@ -16,7 +16,6 @@
 package com.tartner.vertx
 
 import com.tartner.utilities.debugIf
-import com.tartner.vertx.commands.CommandRegistrar
 import com.tartner.vertx.commands.CommandSender
 import com.tartner.vertx.events.EventPublisher
 import com.tartner.vertx.events.EventRegistrar
@@ -25,25 +24,20 @@ import io.vertx.core.http.HttpServer
 import io.vertx.ext.web.Route
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
-import io.vertx.kotlin.coroutines.CoroutineVerticle
 import org.slf4j.LoggerFactory
 
-/** Note that there's no reply to this command, because the actual adding is done async. */
-data class AddRouteCommand(val handlerAddress: String, val route: String): VCommand
 data class HandleSubrouterCallCommand(val routingContext: RoutingContext): VCommand
 data class SubrouterAdded(val handlerAddress: String, val path: String): VEvent
 
 /*
 An address will be registered that takes a RoutingContext message and can do whatever with it.
  */
-
 @PercentOfMaximumVerticleInstancesToDeploy(100)
 class RouterVerticle(
   private val commandSender: CommandSender,
-  private val commandRegistrar: CommandRegistrar,
   private val eventPublisher: EventPublisher,
   private val eventRegistrar: EventRegistrar
-): CoroutineVerticle() {
+): DirectCallVerticle(RouterVerticle::class.qualifiedName!!) {
   private val log = LoggerFactory.getLogger(RouterVerticle::class.java)
 
   private lateinit var mainRouter: Router
@@ -53,7 +47,6 @@ class RouterVerticle(
     super.start()
 
     eventRegistrar.registerEventHandler(SubrouterAdded::class, ::subrouterAdded)
-    commandRegistrar.registerCommandHandler(AddRouteCommand::class, ::addSubrouter)
 
     server = vertx.createHttpServer()
     mainRouter = Router.router(vertx)
@@ -61,10 +54,9 @@ class RouterVerticle(
     server.requestHandler(mainRouter).listen(8080)
   }
 
-  private fun addSubrouter(command: AddRouteCommand) {
-    // TODO: validation?
-    log.debugIf {"Received AddRouteCommand - Adding subrouter, sending event - $command"}
-    eventPublisher.publish(SubrouterAdded(command.handlerAddress, command.route))
+  suspend fun addRoute(handlerAddress: String, route: String) = fireAndForget {
+    log.debugIf {"adding route: address: $handlerAddress; route: $route"}
+    eventPublisher.publish(SubrouterAdded(handlerAddress, route))
   }
 
   private fun subrouterAdded(event: SubrouterAdded) {

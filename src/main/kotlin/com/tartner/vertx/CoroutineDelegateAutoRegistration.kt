@@ -34,9 +34,10 @@ interface CoroutineDelegateAutoRegister {
 class CoroutineDelegateAutoRegistrar(
   private val commandRegistrar: CommandRegistrar,
   private val commandSender: CommandSender,
-  private val eventRegistrar: CommandRegistrar
+  private val eventRegistrar: CommandRegistrar,
+  private val routerVerticle: RouterVerticle
 ) {
-  fun registerHandlers(delegate: CoroutineDelegateAutoRegister, scope: CoroutineScope) {
+  suspend fun registerHandlers(delegate: CoroutineDelegateAutoRegister, scope: CoroutineScope) {
     registerCommandHandlers(delegate, scope)
     registerEventHandlers(delegate, scope)
     registerAPIHandlers(delegate, scope)
@@ -62,10 +63,10 @@ class CoroutineDelegateAutoRegistrar(
     }
   }
 
-  private fun registerAPIHandlers(delegate: CoroutineDelegateAutoRegister, scope: CoroutineScope) {
+  suspend private fun registerAPIHandlers(delegate: CoroutineDelegateAutoRegister, scope: CoroutineScope) {
     delegate.routeHandlers.forEach { (route, handler) ->
       commandRegistrar.registerCommandHandler(scope, route, handler)
-      commandSender.send(AddRouteCommand(route, route))
+      routerVerticle.addRoute(route, route)
     }
   }
 }
