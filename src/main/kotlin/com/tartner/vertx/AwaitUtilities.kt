@@ -18,7 +18,7 @@
 package com.tartner.vertx
 
 import arrow.core.Either
-import com.tartner.vertx.functional.toLeft
+import arrow.core.left
 import io.vertx.core.AsyncResult
 import io.vertx.core.Handler
 import io.vertx.core.eventbus.EventBus
@@ -45,7 +45,7 @@ suspend fun <T> awaitMessageEither(block: (
     val either = asyncResult.result().body()
     either
   } else {
-    AwaitAsyncResultFailure(asyncResult.cause()).toLeft()
+    AwaitAsyncResultFailure(asyncResult.cause()).left()
   }
 }
 

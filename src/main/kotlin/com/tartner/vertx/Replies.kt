@@ -19,12 +19,12 @@ package com.tartner.vertx
 /** This file has standard async replies. */
 
 import arrow.core.Either
-import com.tartner.vertx.functional.toRight
+import arrow.core.right
 import kotlin.reflect.KClass
 
 interface SuccessReply: VMessage
 object DefaultSuccessReply: SuccessReply
-val successReplyRight = DefaultSuccessReply.toRight()
+val successReplyRight = DefaultSuccessReply.right()
 
 interface FailureReply: VMessage
 data class ErrorReply(val message: String, val sourceClass: KClass<*>): FailureReply

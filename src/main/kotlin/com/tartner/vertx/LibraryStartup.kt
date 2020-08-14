@@ -18,10 +18,7 @@ package com.tartner.vertx
 
 import com.tartner.utilities.debugIf
 import com.tartner.vertx.codecs.EventBusJacksonJsonCodec
-import com.tartner.vertx.cqrs.eventsourcing.AggregateEventsQueryHandler
-import com.tartner.vertx.cqrs.eventsourcing.LatestAggregateSnapshotQueryHandler
-import com.tartner.vertx.cqrs.eventsourcing.StoreAggregateEventsPostgresHandler
-import com.tartner.vertx.cqrs.eventsourcing.StoreAggregateSnapshotPostgresHandler
+import com.tartner.vertx.cqrs.eventsourcing.EventSourcingApi
 import com.tartner.vertx.kodein.KodeinVerticleFactoryVerticle
 import com.tartner.vertx.kodein.VerticleDeployer
 import com.tartner.vertx.kodein.i
@@ -50,7 +47,8 @@ suspend fun startLibrary(vertx: Vertx, kodein: DKodein) {
   val startupVerticlesLists =
     listOf (
       listOf(
-        RouterVerticle::class
+        RouterVerticle::class,
+        EventSourcingApi::class
       )
     )
 
@@ -64,11 +62,7 @@ suspend fun startLibrary(vertx: Vertx, kodein: DKodein) {
     }
   }
 
-  val startupDelegates: List<KClass<out CoroutineDelegate>> = listOf(
-    StoreAggregateEventsPostgresHandler::class,
-    StoreAggregateSnapshotPostgresHandler::class,
-    AggregateEventsQueryHandler::class,
-    LatestAggregateSnapshotQueryHandler::class)
+  val startupDelegates: List<KClass<out CoroutineDelegate>> = listOf()
 
   startupDelegates.forEach { classToDeploy ->
     log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }

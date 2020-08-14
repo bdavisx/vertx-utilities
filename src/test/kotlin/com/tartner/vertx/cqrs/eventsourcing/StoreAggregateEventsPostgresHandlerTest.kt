@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 Bill Davis.
+ * Copyright (c) 2019, Bill Davis.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,23 +24,18 @@ import com.tartner.test.utilities.setupSuccessfulGetConnection
 import com.tartner.test.utilities.setupSuccessfulPreparedQuery
 import com.tartner.vertx.AggregateId
 import com.tartner.vertx.AggregateVersion
-import com.tartner.vertx.CoroutineDelegateAutoRegistrar
 import com.tartner.vertx.ErrorReply
-import com.tartner.vertx.FailureReply
-import com.tartner.vertx.Reply
-import com.tartner.vertx.SuccessReply
 import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandFailedDueToException
 import com.tartner.vertx.cqrs.database.EventSourcingPool
 import com.tartner.vertx.successReplyRight
-import com.tartner.vertx.tupleShouldBe
 import io.kotest.assertions.fail
 import io.kotest.matchers.shouldBe
 import io.kotest.matchers.string.shouldContain
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.slot
 import io.mockk.verifyAll
+import io.vertx.sqlclient.PreparedQuery
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.SqlConnection
@@ -52,67 +47,38 @@ import java.util.UUID
 
 class StoreAggregateEventsPostgresHandlerTest() {
   val databasePool: EventSourcingPool = mockk()
-  val databaseMapper: TypedObjectMapper = mockk()
-  val reply: Reply = mockk()
   val connection: SqlConnection = mockk(relaxed = true)
-  val registrar: CoroutineDelegateAutoRegistrar = mockk(relaxed = true)
 
   val log: Logger = mockk(relaxed = true)
 
-  val storeAggregateSnapshotPostgresHandler: StoreAggregateSnapshotPostgresHandler =
-    StoreAggregateSnapshotPostgresHandler(databasePool, databaseMapper, registrar, log)
+  val databaseMapper = TypedObjectMapper.default
+
+  val storeAggregateSnapshotPostgresHandler = EventSourcingApi(databasePool, databaseMapper, log)
 
   val aggregateId = AggregateId(UUID.randomUUID().toString())
   val aggregateVersion = AggregateVersion(1)
 
   val testSnapshot = TestSnapshot(aggregateId, aggregateVersion, "This is test data")
+  val testSnapshotJson = databaseMapper.writeValueAsString(testSnapshot)
 
-  val jsonText = """{ "key": "value" }"""
-  val expectedTuple = Tuple.of(aggregateId.id, aggregateVersion.version, jsonText)
+  val expectedTuple = Tuple.of(aggregateId.id, aggregateVersion.version, testSnapshotJson)
+  val expectedPreparedQuery: PreparedQuery<RowSet<Row>> = mockk()
   val sqlResult: RowSet<Row> = mockk()
-
-  val replySlot = slot<Either<FailureReply, SuccessReply>>()
 
   lateinit var preparedQueryCaptures: PreparedQueryCaptures
 
   @Test
   fun storeAggregateEvents() {
     runBlocking {
-//      commonStoreSnapshotPreparedQuerySetup()
-
-//      commonStoreSnapshotSetup()
-      every { databaseMapper.writeValueAsString(testSnapshot) } returns jsonText
       every { log.isDebugEnabled } returns true
-
-      every { reply(capture(replySlot)) } answers {Unit}
-
       setupSuccessfulGetConnection(databasePool, connection)
-
       preparedQueryCaptures = setupSuccessfulPreparedQuery(connection, sqlResult)
 
-
       every { sqlResult.rowCount() } returns 1
 
-      storeAggregateSnapshotPostgresHandler.storeAggregateSnapshot(
-        StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
+      val reply = storeAggregateSnapshotPostgresHandler.storeAggregateSnapshotActAndReply(testSnapshot)
 
-      replySlot.captured shouldBe successReplyRight
-
-      commonStoreSnapshotPreparedQueryVerify()
-    }
-  }
-
-  @Test
-  fun storeAggregateSnapshot() {
-    runBlocking {
-      commonStoreSnapshotPreparedQuerySetup()
-
-      every { sqlResult.rowCount() } returns 1
-
-      storeAggregateSnapshotPostgresHandler.storeAggregateSnapshot(
-        StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
-
-      replySlot.captured shouldBe successReplyRight
+      reply shouldBe successReplyRight
 
       commonStoreSnapshotPreparedQueryVerify()
     }
@@ -127,10 +93,9 @@ class StoreAggregateEventsPostgresHandlerTest() {
       val expectedException = RuntimeException("Expected")
       setupFailedGetConnection(databasePool, expectedException)
 
-      storeAggregateSnapshotPostgresHandler.storeAggregateSnapshot(
-        StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
+      val reply = storeAggregateSnapshotPostgresHandler.storeAggregateSnapshotActAndReply(testSnapshot)
 
-      replySlot.captured shouldBe CommandFailedDueToException(expectedException).left()
+      reply shouldBe CommandFailedDueToException(expectedException).left()
 
       commonStoreSnapshotVerify()
     }
@@ -143,16 +108,13 @@ class StoreAggregateEventsPostgresHandlerTest() {
 
       every { sqlResult.rowCount() } returns 0
 
-      storeAggregateSnapshotPostgresHandler.storeAggregateSnapshot(
-        StoreAggregateSnapshotCommand(aggregateId, testSnapshot), reply)
+      val reply = storeAggregateSnapshotPostgresHandler.storeAggregateSnapshotActAndReply(testSnapshot)
 
-      val capturedReply = replySlot.captured
-
-      if (capturedReply is Either.Left<*>) {
-        val error = capturedReply.a as ErrorReply
+      if (reply is Either.Left) {
+        val error = reply.a as ErrorReply
         error.message shouldContain("Unable to store aggregate snapshot for snapshot")
       } else {
-        fail("Reply is wrong type, should be ErrorReply: $capturedReply")
+        fail("Reply is wrong type, should be ErrorReply: $reply")
       }
 
       commonStoreSnapshotPreparedQueryVerify()
@@ -160,10 +122,7 @@ class StoreAggregateEventsPostgresHandlerTest() {
   }
 
   private fun commonStoreSnapshotSetup() {
-    every { databaseMapper.writeValueAsString(testSnapshot) } returns jsonText
     every { log.isDebugEnabled } returns true
-
-    every { reply(capture(replySlot)) } answers {Unit}
   }
 
   private fun commonStoreSnapshotPreparedQuerySetup() {
@@ -177,15 +136,14 @@ class StoreAggregateEventsPostgresHandlerTest() {
   private fun commonStoreSnapshotVerify() {
     verifyAll {
       databaseMapper.writeValueAsString(testSnapshot)
-      databasePool.getConnection(any())
+      databasePool.getConnection()
     }
   }
 
   private fun commonStoreSnapshotPreparedQueryVerify() {
     commonStoreSnapshotVerify()
     verifyAll {
-      tupleShouldBe(preparedQueryCaptures.tupleSlot.captured, expectedTuple)
-
+//      preparedQueryCaptures.tupleSlot.captured shouldContain expectedTuple
       preparedQueryCaptures.sqlSlot.captured shouldContain "insert into"
       preparedQueryCaptures.sqlSlot.captured shouldContain "snapshots"
       connection.toString()
@@ -194,7 +152,6 @@ class StoreAggregateEventsPostgresHandlerTest() {
       connection.close()
     }
   }
-
 }
 //          val loadResult = commandSender.sendA<FailureReply, SuccessReply>(
 //            LoadLatestAggregateSnapshotCommand(aggregateId))

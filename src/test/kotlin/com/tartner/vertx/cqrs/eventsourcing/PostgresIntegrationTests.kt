@@ -17,6 +17,7 @@
 package com.tartner.vertx.cqrs.eventsourcing
 
 import arrow.core.Either
+import arrow.core.Option
 import arrow.core.getOrElse
 import com.tartner.test.utilities.AbstractVertxTest
 import com.tartner.test.utilities.runUpdateSql
@@ -25,9 +26,10 @@ import com.tartner.vertx.AggregateEvent
 import com.tartner.vertx.AggregateId
 import com.tartner.vertx.AggregateSnapshot
 import com.tartner.vertx.AggregateVersion
-import com.tartner.vertx.CoroutineDelegate
-import com.tartner.vertx.FailureReply
-import com.tartner.vertx.SuccessReply
+import com.tartner.vertx.CodeMessage
+import com.tartner.vertx.DirectCallVerticle
+import com.tartner.vertx.codecs.PassThroughCodec
+import com.tartner.vertx.commands.CommandFailedDueToException
 import com.tartner.vertx.commands.CommandSender
 import com.tartner.vertx.kodein.KodeinVerticleFactoryVerticle
 import com.tartner.vertx.kodein.VerticleDeployer
@@ -41,6 +43,7 @@ import io.vertx.core.DeploymentOptions
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.VertxUnitRunner
+import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
 import io.vertx.kotlin.coroutines.dispatcher
@@ -62,9 +65,7 @@ data class TestSnapshot(override val aggregateId: AggregateId,
 class PostgresIntegrationTests: AbstractVertxTest() {
   private val log = LoggerFactory.getLogger(PostgresIntegrationTests::class.java)
 
-  val delegatesToDeploy = listOf<KClass<out CoroutineDelegate>>(
-    AggregateEventsQueryHandler::class, LatestAggregateSnapshotQueryHandler::class,
-    StoreAggregateEventsPostgresHandler::class, StoreAggregateSnapshotPostgresHandler::class)
+  val verticlesToDeploy = listOf<KClass<out CoroutineVerticle>>(EventSourcingApi::class)
 
   @Test(timeout = 2500)
   fun snapshotInsertAndQuery(context: TestContext) {
@@ -78,6 +79,9 @@ class PostgresIntegrationTests: AbstractVertxTest() {
         val deploymentOptions = DeploymentOptions()
         deploymentOptions.config = configuration
 
+        vertx.eventBus().registerCodec(PassThroughCodec<CodeMessage<*, DirectCallVerticle<*>>>(
+          CodeMessage::class.qualifiedName!!))
+
         val factoryVerticle = kodein.instance<KodeinVerticleFactoryVerticle>()
         val verticleDeployer = kodein.instance<VerticleDeployer>()
         CompositeFuture.all(
@@ -87,31 +91,31 @@ class PostgresIntegrationTests: AbstractVertxTest() {
         val commandSender: CommandSender = kodein.i()
 
         // TODO: this code is repeated in multiple places
-        delegatesToDeploy.forEach { classToDeploy ->
+        val deployments = verticlesToDeploy.flatMap { classToDeploy ->
           log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
-          factoryVerticle.deployVerticleDelegates(classToDeploy)
+          factoryVerticle.deployVerticleInstances(classToDeploy)
         }
+        val verticle = deployments.first().instance as EventSourcingApi
 
         val runtimeInMilliseconds = measureTimeMillis {
           val aggregateId = AggregateId(UUID.randomUUID().toString())
           val snapshot = TestSnapshot(aggregateId, AggregateVersion(1), "This is test data")
 
-          val addResult = commandSender.sendAsync<FailureReply, SuccessReply>(
-            StoreAggregateSnapshotCommand(aggregateId, snapshot))
+          val addResult = verticle.storeAggregateSnapshot(snapshot)
 
           log.debug(addResult.toString())
           context.assertTrue(addResult is Either.Right<*>)
 
-          val loadResult = commandSender.sendAsync<FailureReply, SuccessReply>(
-            LatestAggregateSnapshotQuery(aggregateId))
+          val loadResult: Either<CommandFailedDueToException, Option<AggregateSnapshot>> =
+            verticle.loadLatestAggregateSnapshot(aggregateId)
 
           when (loadResult) {
-            is Either.Left<*> -> context.fail()
-            is Either.Right<*> -> {
+            is Either.Left -> context.fail()
+            is Either.Right -> {
               if (loadResult.b == null) { context.fail("No snapshot was returned") }
 
-              val response = loadResult.b as LatestAggregateSnapshotQueryResponse
-              val loadedSnapshot: AggregateSnapshot = response.possibleSnapshot.getOrElse {
+              val response: Option<AggregateSnapshot> = loadResult.b
+              val loadedSnapshot: AggregateSnapshot = response.getOrElse {
                 fail("No snapshot found") }
               context.assertEquals(snapshot, loadedSnapshot)
             }
@@ -142,6 +146,9 @@ class PostgresIntegrationTests: AbstractVertxTest() {
         val deploymentOptions = DeploymentOptions()
         deploymentOptions.config = configuration
 
+        vertx.eventBus().registerCodec(PassThroughCodec<CodeMessage<*, DirectCallVerticle<*>>>(
+          CodeMessage::class.qualifiedName!!))
+
         val commandSender: CommandSender = kodein.i()
 
         val factoryVerticle = kodein.instance<KodeinVerticleFactoryVerticle>()
@@ -150,10 +157,11 @@ class PostgresIntegrationTests: AbstractVertxTest() {
           verticleDeployer.deployVerticles(vertx, listOf(factoryVerticle)).map{it.future()}).await()
         log.debug("VerticleFactoryVerticle deployed")
 
-        delegatesToDeploy.forEach { classToDeploy ->
+        val deployments = verticlesToDeploy.flatMap { classToDeploy ->
           log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
-          factoryVerticle.deployVerticleDelegates(classToDeploy)
+          factoryVerticle.deployVerticleInstances(classToDeploy)
         }
+        val verticle = deployments.first().instance as EventSourcingApi
 
         val runtimeInMilliseconds = measureTimeMillis {
           val aggregateId = AggregateId(UUID.randomUUID().toString())
@@ -165,8 +173,7 @@ class PostgresIntegrationTests: AbstractVertxTest() {
             events.add(EventSourcedTestAggregateNameChanged(aggregateId, AggregateVersion(aggregateVersion++), "New Name"))
           }
 
-          val storeResult = commandSender.sendAsync<FailureReply, SuccessReply>(
-            StoreAggregateEventsCommand(aggregateId, events))
+          val storeResult = verticle.storeAggregateEvents(aggregateId, events)
 
           when (storeResult) {
             is Either.Left -> {
@@ -174,8 +181,7 @@ class PostgresIntegrationTests: AbstractVertxTest() {
               context.fail(storeResult.a.toString())
             }
             is Either.Right -> {
-              val loadResult = commandSender.sendAsync<FailureReply, SuccessReply>(
-                AggregateEventsQuery(aggregateId, Long.MIN_VALUE))
+              val loadResult = verticle.loadAggregateEvents(aggregateId, Long.MIN_VALUE)
 
               when (loadResult) {
                 is Either.Left -> {
@@ -183,12 +189,12 @@ class PostgresIntegrationTests: AbstractVertxTest() {
                   context.fail(loadResult.a.toString())
                 }
                 is Either.Right -> {
-                  val loadedEvents = loadResult.b as AggregateEventsQueryResponse
-                  if (loadedEvents.events.isEmpty()) {
+                  val loadedEvents = loadResult.b
+                  if (loadedEvents.isEmpty()) {
                     context.fail("No events were returned")
                   }
 
-                  loadedEvents.events shouldBe events
+                  loadedEvents shouldBe events
                 }
               }
             }
@@ -204,4 +210,3 @@ class PostgresIntegrationTests: AbstractVertxTest() {
     }}
   }
 }
-

@@ -23,9 +23,7 @@ import io.mockk.CapturingSlot
 import io.mockk.coEvery
 import io.mockk.mockk
 import io.mockk.slot
-import io.vertx.core.AsyncResult
 import io.vertx.core.Future
-import io.vertx.core.Handler
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.awaitResult
 import io.vertx.sqlclient.PreparedQuery
@@ -54,16 +52,14 @@ suspend fun runUpdateSql(sql: String, parameters: Tuple, vertx: Vertx,
  * that will hold the sql and parameters sent to the query after the call.
  */
 fun setupSuccessfulGetConnection(mockDatabasePool: EventSourcingPool, connection: SqlConnection) {
-  val getConnectionSlot = slot<Handler<AsyncResult<SqlConnection>>>()
-  coEvery { mockDatabasePool.getConnection(capture(getConnectionSlot)) } answers {
-    getConnectionSlot.captured.handle(Future.succeededFuture(connection))
+  coEvery { mockDatabasePool.getConnection() } answers {
+    Future.succeededFuture(connection)
   }
 }
 
 fun setupFailedGetConnection(mockDatabasePool: EventSourcingPool, failureException: Throwable) {
-  val getConnectionSlot = slot<Handler<AsyncResult<SqlConnection>>>()
-  coEvery { mockDatabasePool.getConnection(capture(getConnectionSlot)) } answers {
-    getConnectionSlot.captured.handle(Future.failedFuture(failureException))
+  coEvery { mockDatabasePool.getConnection() } answers {
+    Future.failedFuture(failureException)
   }
 }
 
@@ -75,7 +71,6 @@ fun setupSuccessfulPreparedQuery(mockConnection: SqlConnection , sqlResult: RowS
   : PreparedQueryCaptures {
   val sqlSlot: CapturingSlot<String> = slot()
   val tupleSlot: CapturingSlot<Tuple> = slot()
-  val preparedQuerySlot = slot<Handler<AsyncResult<RowSet<Row>>>>()
 
   val mockPreparedQuery = mockk<PreparedQuery<RowSet<Row>>>()
 
@@ -86,10 +81,9 @@ fun setupSuccessfulPreparedQuery(mockConnection: SqlConnection , sqlResult: RowS
   }
 
   coEvery {
-    mockPreparedQuery.execute(capture(tupleSlot), capture(preparedQuerySlot))
+    mockPreparedQuery.execute(capture(tupleSlot))
   } answers {
-    preparedQuerySlot.captured.handle(Future.succeededFuture(sqlResult))
-    mockConnection
+    Future.succeededFuture(sqlResult)
   }
 
   return PreparedQueryCaptures(sqlSlot, tupleSlot)

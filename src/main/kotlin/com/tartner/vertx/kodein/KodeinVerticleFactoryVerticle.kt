@@ -108,7 +108,9 @@ class KodeinVerticleFactoryVerticle(
     eventPublisher.publish(MaximumNumberOfVerticleInstancesToDeployConfiguredEvent(maximumNumber))
   }
 
-  suspend fun <T: CoroutineVerticle> deployVerticleInstances(verticleClass: KClass<T>) = actAndReply {
+  suspend fun <T: CoroutineVerticle> deployVerticleInstances(verticleClass: KClass<T>)
+    = actAndReply<List<VerticleDeployment>> {
+
     log.debugIf { "Attempting to create the verticle class: ${verticleClass.qualifiedName}" }
 
     val numberOfInstances: Int = determineNumberOfVerticleInstances(verticleClass)
@@ -128,11 +130,11 @@ class KodeinVerticleFactoryVerticle(
 
     eventPublisher.publish(VerticleInstancesDeployedEvent(verticleClass, numberOfInstances))
 
-    DeployVerticleInstancesResponse(deploymentPromises.map { it.future().result() })
+    deploymentPromises.map { it.future().result() }
   }
 
   suspend fun <T: CoroutineDelegate> deployVerticleDelegates(delegateClass: KClass<T>)
-    = actAndReply<Either<ErrorReply, DeployVerticleInstancesResponse>> {
+    = actAndReply<Either<ErrorReply, List<VerticleDeployment>>> {
 
     val verticleClass = CoroutineDelegateVerticle::class
 
@@ -162,7 +164,7 @@ class KodeinVerticleFactoryVerticle(
     eventPublisher.publish(VerticleInstancesDeployedEvent(verticleClass, numberOfInstances))
     eventPublisher.publish(VerticleDelegateInstancesDeployedEvent(delegateClass, numberOfInstances))
 
-    DeployVerticleInstancesResponse(deploymentFutures.map { it.future().result() }).right()
+    deploymentFutures.map { it.future().result() }.right()
   }
 
   private fun determineNumberOfVerticleInstances(verticleClass: KClass<*>): Int {

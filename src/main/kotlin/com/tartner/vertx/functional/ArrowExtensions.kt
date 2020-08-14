@@ -21,9 +21,6 @@ import arrow.core.Either
 import arrow.core.Left
 import arrow.core.Right
 
-fun <L: Any> L.toLeft() = Either.Left(this)
-fun <R: Any> R.toRight() = Either.Right(this)
-
 inline fun <R> resultOf(f: () -> R): Either<Exception, R> = try {
   Right(f())
 } catch (e: Exception) {

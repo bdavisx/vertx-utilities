@@ -25,10 +25,7 @@ import com.tartner.vertx.RouterVerticle
 import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandRegistrar
 import com.tartner.vertx.commands.CommandSender
-import com.tartner.vertx.cqrs.eventsourcing.AggregateEventsQueryHandler
-import com.tartner.vertx.cqrs.eventsourcing.LatestAggregateSnapshotQueryHandler
-import com.tartner.vertx.cqrs.eventsourcing.StoreAggregateEventsPostgresHandler
-import com.tartner.vertx.cqrs.eventsourcing.StoreAggregateSnapshotPostgresHandler
+import com.tartner.vertx.cqrs.eventsourcing.EventSourcingApi
 import com.tartner.vertx.events.EventPublisher
 import com.tartner.vertx.events.EventRegistrar
 import io.vertx.core.Vertx
@@ -62,10 +59,7 @@ fun vertxUtilitiesModule(vertx: Vertx) = Kodein.Module("vertxUtilitiesModule") {
   bind<CoroutineDelegateAutoRegistrar>() with singleton { CoroutineDelegateAutoRegistrar(i(), i(), i(), i()) }
   bind<KodeinVerticleFactoryVerticle>() with singleton { KodeinVerticleFactoryVerticle(kodein.direct, i(), i(), i()) }
 
-  bind<StoreAggregateEventsPostgresHandler>() with provider { StoreAggregateEventsPostgresHandler(i(), i(), i()) }
-  bind<StoreAggregateSnapshotPostgresHandler>() with provider { StoreAggregateSnapshotPostgresHandler(i(), i(), i()) }
-  bind<AggregateEventsQueryHandler>() with provider { AggregateEventsQueryHandler(i(), i(), i()) }
-  bind<LatestAggregateSnapshotQueryHandler>() with provider { LatestAggregateSnapshotQueryHandler(i(), i(), i()) }
+  bind<EventSourcingApi>() with provider { EventSourcingApi(i(), i(), i()) }
 
   bind<RandomGenerator>() with singleton { RandomGenerator() }
   bind<IdGenerator>() with singleton { i<RandomGenerator>()::generateId }

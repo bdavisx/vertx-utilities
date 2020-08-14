@@ -16,24 +16,20 @@
 
 package com.tartner.vertx.sqlclient
 
-import io.vertx.kotlin.coroutines.awaitResult
-import io.vertx.sqlclient.Pool
+import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
 import io.vertx.sqlclient.SqlConnection
 import io.vertx.sqlclient.Tuple
 
-inline suspend fun Pool.getConnectionAsync() =
-  awaitResult<SqlConnection> { this.getConnection(it) }
+suspend inline fun SqlConnection.queryAsync(queryText: String): RowSet<Row> =
+  this.query(queryText).execute().await()
 
-inline suspend fun SqlConnection.queryAsync(queryText: String): RowSet<Row> =
-  awaitResult {this.query(queryText).execute(it)}
+suspend inline fun SqlConnection.queryWithParamsAsync(queryText: String, params: Tuple): RowSet<Row> =
+  this.preparedQuery(queryText).execute(params).await()
 
-inline suspend fun SqlConnection.queryWithParamsAsync(queryText: String, params: Tuple): RowSet<Row> =
-  awaitResult { this.preparedQuery(queryText).execute(params, it) }
+suspend inline fun SqlConnection.updateWithParamsAsync(queryText: String, params: Tuple): RowSet<Row> =
+  this.preparedQuery(queryText).execute(params).await()
 
-inline suspend fun SqlConnection.updateWithParamsAsync(queryText: String, params: Tuple): RowSet<Row> =
-  awaitResult { this.preparedQuery(queryText).execute(params, it) }
-
-inline suspend fun SqlConnection.batchWithParamsAsync(queryText: String, params: List<Tuple>): RowSet<Row> =
-  awaitResult { this.preparedQuery(queryText).executeBatch(params, it) }
+suspend inline fun SqlConnection.batchWithParamsAsync(queryText: String, params: List<Tuple>): RowSet<Row> =
+  this.preparedQuery(queryText).executeBatch(params).await()

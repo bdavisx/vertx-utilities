@@ -3,6 +3,7 @@ package com.tartner.vertx
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.Message
 import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.launch
 
@@ -36,23 +37,18 @@ open class DirectCallVerticle<Subtype: DirectCallVerticle<Subtype>>(val localAdd
    * like coroutines are expected to run, the calling thread awaits on the return, it does not "fire
    * and forget".
    */
-  protected suspend fun act(block: suspend (Subtype) -> Unit) {
+  protected suspend fun act(block: suspend (Subtype) -> Unit) =
     // we could fire and forget here, but we want the semantics of "imperative" code like coroutines have
-    awaitMessageResult<Any> {
-      eventBus.request(localAddress, UnitCodeMessage(block), codeDeliveryOptions, it)
-    }
-  }
+    eventBus.request<Unit>(localAddress, UnitCodeMessage(block), codeDeliveryOptions).await().body()
 
   /**
    * Code inside `block` will run on the event loop for this (set of) verticle(s). The code runs
    * like coroutines are expected to run, the calling thread awaits on the return, it does not "fire
    * and forget". The value returned by the block will be the return value for this function.
    */
-  protected suspend fun <T: Any> actAndReply(block: suspend (Subtype) -> T): T {
-    return awaitMessageResult {
-      eventBus.request(localAddress, ReturnValueCodeMessage(block), codeDeliveryOptions, it)
-    }
-  }
+  protected suspend fun <T: Any> actAndReply(block: suspend (Subtype) -> T): T =
+    eventBus.request<T>(localAddress, ReturnValueCodeMessage(block), codeDeliveryOptions)
+      .await().body()
 
   /**
    * Code inside `block` will run on the event loop for this (set of) verticle(s). The calling
