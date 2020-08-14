@@ -18,14 +18,10 @@ package com.tartner.vertx
 
 import com.tartner.utilities.debugIf
 import com.tartner.vertx.codecs.EventBusJacksonJsonCodec
-import com.tartner.vertx.commands.CommandSender
 import com.tartner.vertx.cqrs.eventsourcing.AggregateEventsQueryHandler
 import com.tartner.vertx.cqrs.eventsourcing.LatestAggregateSnapshotQueryHandler
 import com.tartner.vertx.cqrs.eventsourcing.StoreAggregateEventsPostgresHandler
 import com.tartner.vertx.cqrs.eventsourcing.StoreAggregateSnapshotPostgresHandler
-import com.tartner.vertx.kodein.DeployVerticleDelegatesCommand
-import com.tartner.vertx.kodein.DeployVerticleInstancesCommand
-import com.tartner.vertx.kodein.DeployVerticleInstancesResponse
 import com.tartner.vertx.kodein.KodeinVerticleFactoryVerticle
 import com.tartner.vertx.kodein.VerticleDeployer
 import com.tartner.vertx.kodein.i
@@ -58,16 +54,13 @@ suspend fun startLibrary(vertx: Vertx, kodein: DKodein) {
       )
     )
 
-  val commandSender = kodein.instance<CommandSender>()
-
   startupVerticlesLists.forEach { verticlesToDeploy: List<KClass<out CoroutineVerticle>> ->
     log.debugIf { "Instantiating verticles: $verticlesToDeploy" }
     verticlesToDeploy.forEach { classToDeploy ->
       log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
       // TODO: what if this returns a failure, need to test the handling verticle to see what
       //  happens with a failure
-      awaitMessageResult<DeployVerticleInstancesResponse> {
-        commandSender.send(DeployVerticleInstancesCommand(classToDeploy), it) }
+      factoryVerticle.deployVerticleInstances(classToDeploy)
     }
   }
 
@@ -81,7 +74,6 @@ suspend fun startLibrary(vertx: Vertx, kodein: DKodein) {
     log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
     // TODO: what if this returns a failure, need to test the handling verticle to see what
     //  happens with a failure
-    awaitMessageResult<DeployVerticleInstancesResponse> {
-      commandSender.send(DeployVerticleDelegatesCommand(classToDeploy), it) }
+    factoryVerticle.deployVerticleDelegates(classToDeploy)
   }
 }

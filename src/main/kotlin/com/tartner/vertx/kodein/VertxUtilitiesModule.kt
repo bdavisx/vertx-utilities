@@ -60,7 +60,7 @@ fun vertxUtilitiesModule(vertx: Vertx) = Kodein.Module("vertxUtilitiesModule") {
 
   bind<CoroutineDelegateVerticleFactory>() with singleton { CoroutineDelegateVerticleFactory(i(), i(), i(), i()) }
   bind<CoroutineDelegateAutoRegistrar>() with singleton { CoroutineDelegateAutoRegistrar(i(), i(), i(), i()) }
-  bind<KodeinVerticleFactoryVerticle>() with singleton { KodeinVerticleFactoryVerticle(kodein.direct, i(), i(), i(), i()) }
+  bind<KodeinVerticleFactoryVerticle>() with singleton { KodeinVerticleFactoryVerticle(kodein.direct, i(), i(), i()) }
 
   bind<StoreAggregateEventsPostgresHandler>() with provider { StoreAggregateEventsPostgresHandler(i(), i(), i()) }
   bind<StoreAggregateSnapshotPostgresHandler>() with provider { StoreAggregateSnapshotPostgresHandler(i(), i(), i()) }

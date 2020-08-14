@@ -28,10 +28,7 @@ import com.tartner.vertx.AggregateVersion
 import com.tartner.vertx.CoroutineDelegate
 import com.tartner.vertx.FailureReply
 import com.tartner.vertx.SuccessReply
-import com.tartner.vertx.awaitMessageResult
 import com.tartner.vertx.commands.CommandSender
-import com.tartner.vertx.kodein.DeployVerticleDelegatesCommand
-import com.tartner.vertx.kodein.DeployVerticleInstancesResponse
 import com.tartner.vertx.kodein.KodeinVerticleFactoryVerticle
 import com.tartner.vertx.kodein.VerticleDeployer
 import com.tartner.vertx.kodein.i
@@ -92,8 +89,7 @@ class PostgresIntegrationTests: AbstractVertxTest() {
         // TODO: this code is repeated in multiple places
         delegatesToDeploy.forEach { classToDeploy ->
           log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
-          awaitMessageResult<DeployVerticleInstancesResponse> {
-            commandSender.send(DeployVerticleDelegatesCommand(classToDeploy), it) }
+          factoryVerticle.deployVerticleDelegates(classToDeploy)
         }
 
         val runtimeInMilliseconds = measureTimeMillis {
@@ -156,8 +152,7 @@ class PostgresIntegrationTests: AbstractVertxTest() {
 
         delegatesToDeploy.forEach { classToDeploy ->
           log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
-          awaitMessageResult<DeployVerticleInstancesResponse> {
-            commandSender.send(DeployVerticleDelegatesCommand(classToDeploy), it) }
+          factoryVerticle.deployVerticleDelegates(classToDeploy)
         }
 
         val runtimeInMilliseconds = measureTimeMillis {

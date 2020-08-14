@@ -27,7 +27,7 @@ import java.util.UUID
 /** Dummy data class w/ a var for the verticle to manipulate. Wouldn't normally do this, but it's a test. */
 data class ManipulateMe(var value: Int = 0)
 
-class TestDirectCallVerticle(id: String): DirectCallVerticle(id) {
+class TestDirectCallVerticle(id: String): DirectCallVerticle<TestDirectCallVerticle>(id) {
   private val log = LoggerFactory.getLogger(TestDirectCallVerticle::class.java)
   val random = Random()
 
@@ -91,7 +91,7 @@ class DirectCallVerticleTest {
       GlobalScope.launch(vertx.dispatcher()) {
         try {
           vertx.eventBus().registerCodec(
-            PassThroughCodec<CodeMessage<*>>(CodeMessage::class.qualifiedName!!))
+            PassThroughCodec<CodeMessage<*, DirectCallVerticle<*>>>(CodeMessage::class.qualifiedName!!))
 
           val deploymentOptions = DeploymentOptions()
 
@@ -125,7 +125,8 @@ class DirectCallVerticleTest {
     vertx.runOnContext {
       GlobalScope.launch(vertx.dispatcher()) {
         try {
-          vertx.eventBus().registerCodec(PassThroughCodec<CodeMessage<*>>(CodeMessage::class.qualifiedName!!))
+          vertx.eventBus().registerCodec(
+            PassThroughCodec<CodeMessage<*, DirectCallVerticle<*>>>(CodeMessage::class.qualifiedName!!))
 
           val deploymentOptions = DeploymentOptions()
 

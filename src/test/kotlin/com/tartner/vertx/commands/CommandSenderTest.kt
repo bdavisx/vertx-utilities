@@ -19,7 +19,6 @@ package com.tartner.vertx.commands
 
 import com.natpryce.hamkrest.equalTo
 import com.tartner.vertx.VCommand
-import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.setupVertxKodein
 import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.RunTestOnContext
@@ -44,7 +43,6 @@ class CommandSenderTest {
     val (vertx, dKodein) = setupVertxKodein(listOf(), rule.vertx(), testContext)
 
     val async = testContext.async()
-    val serializer = dKodein.instance<TypedObjectMapper>()
 
     vertx.exceptionHandler(testContext.exceptionHandler())
 

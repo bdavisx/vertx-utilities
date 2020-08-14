@@ -37,7 +37,7 @@ class RouterVerticle(
   private val commandSender: CommandSender,
   private val eventPublisher: EventPublisher,
   private val eventRegistrar: EventRegistrar
-): DirectCallVerticle(RouterVerticle::class.qualifiedName!!) {
+): DirectCallVerticle<RouterVerticle>(RouterVerticle::class.qualifiedName!!) {
   private val log = LoggerFactory.getLogger(RouterVerticle::class.java)
 
   private lateinit var mainRouter: Router
