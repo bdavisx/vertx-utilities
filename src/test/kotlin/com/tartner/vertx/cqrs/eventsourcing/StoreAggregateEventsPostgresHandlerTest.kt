@@ -16,143 +16,118 @@
 
 package com.tartner.vertx.cqrs.eventsourcing
 
-import arrow.core.Either
-import arrow.core.left
-import com.tartner.test.utilities.PreparedQueryCaptures
-import com.tartner.test.utilities.setupFailedGetConnection
-import com.tartner.test.utilities.setupSuccessfulGetConnection
-import com.tartner.test.utilities.setupSuccessfulPreparedQuery
-import com.tartner.vertx.AggregateId
-import com.tartner.vertx.AggregateVersion
-import com.tartner.vertx.ErrorReply
-import com.tartner.vertx.codecs.TypedObjectMapper
-import com.tartner.vertx.commands.CommandFailedDueToException
-import com.tartner.vertx.cqrs.database.EventSourcingPool
-import com.tartner.vertx.successReplyRight
-import io.kotest.assertions.fail
-import io.kotest.matchers.shouldBe
-import io.kotest.matchers.string.shouldContain
-import io.mockk.every
-import io.mockk.mockk
-import io.mockk.verifyAll
-import io.vertx.sqlclient.PreparedQuery
-import io.vertx.sqlclient.Row
-import io.vertx.sqlclient.RowSet
-import io.vertx.sqlclient.SqlConnection
-import io.vertx.sqlclient.Tuple
-import kotlinx.coroutines.runBlocking
-import org.junit.Test
-import org.slf4j.Logger
-import java.util.UUID
-
 class StoreAggregateEventsPostgresHandlerTest() {
-  val databasePool: EventSourcingPool = mockk()
-  val connection: SqlConnection = mockk(relaxed = true)
-
-  val log: Logger = mockk(relaxed = true)
-
-  val databaseMapper = TypedObjectMapper.default
-
-  val storeAggregateSnapshotPostgresHandler = EventSourcingApi(databasePool, databaseMapper, log)
-
-  val aggregateId = AggregateId(UUID.randomUUID().toString())
-  val aggregateVersion = AggregateVersion(1)
-
-  val testSnapshot = TestSnapshot(aggregateId, aggregateVersion, "This is test data")
-  val testSnapshotJson = databaseMapper.writeValueAsString(testSnapshot)
-
-  val expectedTuple = Tuple.of(aggregateId.id, aggregateVersion.version, testSnapshotJson)
-  val expectedPreparedQuery: PreparedQuery<RowSet<Row>> = mockk()
-  val sqlResult: RowSet<Row> = mockk()
-
-  lateinit var preparedQueryCaptures: PreparedQueryCaptures
-
-  @Test
-  fun storeAggregateEvents() {
-    runBlocking {
-      every { log.isDebugEnabled } returns true
-      setupSuccessfulGetConnection(databasePool, connection)
-      preparedQueryCaptures = setupSuccessfulPreparedQuery(connection, sqlResult)
-
-      every { sqlResult.rowCount() } returns 1
-
-      val reply = storeAggregateSnapshotPostgresHandler.storeAggregateSnapshotActAndReply(testSnapshot)
-
-      reply shouldBe successReplyRight
-
-      commonStoreSnapshotPreparedQueryVerify()
-    }
-  }
-
-  @Test
-  fun storeAggregateSnapshotConnectionFail() {
-    runBlocking {
-
-      commonStoreSnapshotSetup()
-
-      val expectedException = RuntimeException("Expected")
-      setupFailedGetConnection(databasePool, expectedException)
-
-      val reply = storeAggregateSnapshotPostgresHandler.storeAggregateSnapshotActAndReply(testSnapshot)
-
-      reply shouldBe CommandFailedDueToException(expectedException).left()
-
-      commonStoreSnapshotVerify()
-    }
-  }
-
-  @Test
-  fun storeAggregateSnapshotNoRecordsUpdated() {
-    runBlocking {
-      commonStoreSnapshotPreparedQuerySetup()
-
-      every { sqlResult.rowCount() } returns 0
-
-      val reply = storeAggregateSnapshotPostgresHandler.storeAggregateSnapshotActAndReply(testSnapshot)
-
-      if (reply is Either.Left) {
-        val error = reply.a as ErrorReply
-        error.message shouldContain("Unable to store aggregate snapshot for snapshot")
-      } else {
-        fail("Reply is wrong type, should be ErrorReply: $reply")
-      }
-
-      commonStoreSnapshotPreparedQueryVerify()
-    }
-  }
-
-  private fun commonStoreSnapshotSetup() {
-    every { log.isDebugEnabled } returns true
-  }
-
-  private fun commonStoreSnapshotPreparedQuerySetup() {
-    commonStoreSnapshotSetup()
-
-    setupSuccessfulGetConnection(databasePool, connection)
-
-    preparedQueryCaptures = setupSuccessfulPreparedQuery(connection, sqlResult)
-  }
-
-  private fun commonStoreSnapshotVerify() {
-    verifyAll {
-      databaseMapper.writeValueAsString(testSnapshot)
-      databasePool.getConnection()
-    }
-  }
-
-  private fun commonStoreSnapshotPreparedQueryVerify() {
-    commonStoreSnapshotVerify()
-    verifyAll {
-//      preparedQueryCaptures.tupleSlot.captured shouldContain expectedTuple
-      preparedQueryCaptures.sqlSlot.captured shouldContain "insert into"
-      preparedQueryCaptures.sqlSlot.captured shouldContain "snapshots"
-      connection.toString()
-      connection.preparedQuery(any())
-      sqlResult.rowCount()
-      connection.close()
-    }
-  }
+//  val databasePool: EventSourcingPool = mockk()
+//  val connection: SqlConnection = mockk(relaxed = true)
+//
+//  val log: Logger = mockk(relaxed = true)
+//
+//  val databaseMapper = TypedObjectMapper.default
+//
+//  val storeAggregateSnapshotPostgresHandler = EventSourcingApi(databasePool, databaseMapper, log)
+//
+//  val aggregateId = AggregateId(UUID.randomUUID().toString())
+//  val aggregateVersion = AggregateVersion(1)
+//
+//  val testSnapshot = TestSnapshot(aggregateId, aggregateVersion, "This is test data")
+//  val testSnapshotJson = databaseMapper.writeValueAsString(testSnapshot)
+//
+//  val expectedTuple = Tuple.of(aggregateId.id, aggregateVersion.version, testSnapshotJson)
+//  val expectedPreparedQuery: PreparedQuery<RowSet<Row>> = mockk()
+//  val sqlResult: RowSet<Row> = mockk()
+//
+//  lateinit var preparedQueryCaptures: PreparedQueryCaptures
+//
+//  @Test
+//  fun storeAggregateEvents() {
+//    runBlocking {
+//      every { log.isDebugEnabled } returns true
+//      setupSuccessfulGetConnection(databasePool, connection)
+//      preparedQueryCaptures = setupSuccessfulPreparedQuery(connection, sqlResult)
+//
+//      every { sqlResult.rowCount() } returns 1
+//
+//      val reply = storeAggregateSnapshotPostgresHandler.storeAggregateSnapshotActAndReply(testSnapshot)
+//
+//      reply shouldBe successReplyRight
+//
+//      commonStoreSnapshotPreparedQueryVerify()
+//    }
+//  }
+//
+//  @Test
+//  fun storeAggregateSnapshotConnectionFail() {
+//    runBlocking {
+//
+//      commonStoreSnapshotSetup()
+//
+//      val expectedException = RuntimeException("Expected")
+//      setupFailedGetConnection(databasePool, expectedException)
+//
+//      val reply = storeAggregateSnapshotPostgresHandler.storeAggregateSnapshotActAndReply(testSnapshot)
+//
+//      reply shouldBe CommandFailedDueToException(expectedException).left()
+//
+//      commonStoreSnapshotVerify()
+//    }
+//  }
+//
+//  @Test
+//  fun storeAggregateSnapshotNoRecordsUpdated() {
+//    runBlocking {
+//      commonStoreSnapshotPreparedQuerySetup()
+//
+//      every { sqlResult.rowCount() } returns 0
+//
+//      val reply = storeAggregateSnapshotPostgresHandler.storeAggregateSnapshotActAndReply(testSnapshot)
+//
+//      if (reply is Either.Left) {
+//        val error = reply.a as ErrorReply
+//        error.message shouldContain("Unable to store aggregate snapshot for snapshot")
+//      } else {
+//        fail("Reply is wrong type, should be ErrorReply: $reply")
+//      }
+//
+//      commonStoreSnapshotPreparedQueryVerify()
+//    }
+//  }
+//
+//  private fun commonStoreSnapshotSetup() {
+//    every { log.isDebugEnabled } returns true
+//  }
+//
+//  private fun commonStoreSnapshotPreparedQuerySetup() {
+//    commonStoreSnapshotSetup()
+//
+//    setupSuccessfulGetConnection(databasePool, connection)
+//
+//    preparedQueryCaptures = setupSuccessfulPreparedQuery(connection, sqlResult)
+//  }
+//
+//  private fun commonStoreSnapshotVerify() {
+//    verifyAll {
+//      databaseMapper.writeValueAsString(testSnapshot)
+//      databasePool.getConnection()
+//    }
+//  }
+//
+//  private fun commonStoreSnapshotPreparedQueryVerify() {
+//    commonStoreSnapshotVerify()
+//    verifyAll {
+////      preparedQueryCaptures.tupleSlot.captured shouldContain expectedTuple
+//      preparedQueryCaptures.sqlSlot.captured shouldContain "insert into"
+//      preparedQueryCaptures.sqlSlot.captured shouldContain "snapshots"
+//      connection.toString()
+//      connection.preparedQuery(any())
+//      sqlResult.rowCount()
+//      connection.close()
+//    }
+//  }
 }
+
+
+
+
 //          val loadResult = commandSender.sendA<FailureReply, SuccessReply>(
 //            LoadLatestAggregateSnapshotCommand(aggregateId))
 //

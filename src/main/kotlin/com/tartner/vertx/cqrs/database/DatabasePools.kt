@@ -44,14 +44,14 @@ class QueryModelPool(pool: Pool): AbstractPool(pool)
 val databaseFactoryModule = Kodein.Module("databaseFactoryModule") {
   val environment: MutableMap<String, String> = System.getenv()
 
-  bind<AuthenticationPool>() with singleton { AuthenticationPool(AbstractPool.createPool(
-    i(), environment, "databaseQueryModel")) }
+  bind<AuthenticationPool>() with singleton {
+    AuthenticationPool(AbstractPool.createPool(i(), environment, "databaseQueryModel")) }
 
-  bind<EventSourcingPool>() with singleton { EventSourcingPool(AbstractPool.createPool(
-    i(), environment, "databaseEventSourcing")) }
+  bind<EventSourcingPool>() with singleton {
+    EventSourcingPool(AbstractPool.createPool(i(), environment, "databaseEventSourcing")) }
 
-  bind<QueryModelPool>() with singleton { QueryModelPool(AbstractPool.createPool(
-    i(), environment, "databaseQueryModel")) }
+  bind<QueryModelPool>() with singleton {
+    QueryModelPool(AbstractPool.createPool(i(), environment, "databaseQueryModel")) }
 }
 
 abstract class AbstractPool(private val pool: Pool): Pool by pool {
@@ -90,6 +90,7 @@ abstract class AbstractPool(private val pool: Pool): Pool by pool {
         .setDatabase(configurationValue(configuration, environmentNamePrefix, "Database"))
         .setUser(configurationValue(configuration, environmentNamePrefix, "UserId"))
         .setPassword(configurationValue(configuration, environmentNamePrefix, "Password"))
+        .addProperty("search_path", configurationValue(configuration, environmentNamePrefix, "Schema"))
     }
 
     private fun configurationValue(environment: Map<String, String>, environmentNamePrefix: String,

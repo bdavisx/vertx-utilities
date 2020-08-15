@@ -59,7 +59,7 @@ fun vertxUtilitiesModule(vertx: Vertx) = Kodein.Module("vertxUtilitiesModule") {
   bind<CoroutineDelegateAutoRegistrar>() with singleton { CoroutineDelegateAutoRegistrar(i(), i(), i(), i()) }
   bind<KodeinVerticleFactoryVerticle>() with singleton { KodeinVerticleFactoryVerticle(kodein.direct, i(), i(), i()) }
 
-  bind<EventSourcingApi>() with provider { EventSourcingApi(i(), i(), i()) }
+  bind<EventSourcingApi>() with provider { EventSourcingApi(i(), i()) }
 
   bind<RandomGenerator>() with singleton { RandomGenerator() }
   bind<IdGenerator>() with singleton { i<RandomGenerator>()::generateId }

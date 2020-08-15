@@ -64,13 +64,13 @@ open class DirectCallVerticle<Subtype: DirectCallVerticle<Subtype>>(val localAdd
     when (codeMessage.body()) {
       is UnitCodeMessage -> {
         code.block.invoke(this as Subtype)
-        codeMessage.reply(1)
+        codeMessage.reply(1, codeDeliveryOptions)
       }
       is FireAndForgetCodeMessage -> {
         code.block.invoke(this as Subtype)
       }
       is ReturnValueCodeMessage -> {
-        codeMessage.reply(code.block.invoke(this as Subtype))
+        codeMessage.reply(code.block.invoke(this as Subtype), codeDeliveryOptions)
       }
     }
   }

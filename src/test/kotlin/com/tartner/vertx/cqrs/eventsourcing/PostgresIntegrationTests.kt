@@ -87,6 +87,7 @@ class PostgresIntegrationTests: AbstractVertxTest() {
         CompositeFuture.all(
           verticleDeployer.deployVerticles(vertx, listOf(factoryVerticle)).map{it.future()}).await()
         log.debug("VerticleFactoryVerticle deployed")
+        factoryVerticle.configureMaximumNumberOfVerticleInstancesToDeploy(10)
 
         val commandSender: CommandSender = kodein.i()
 
@@ -146,8 +147,11 @@ class PostgresIntegrationTests: AbstractVertxTest() {
         val deploymentOptions = DeploymentOptions()
         deploymentOptions.config = configuration
 
-        vertx.eventBus().registerCodec(PassThroughCodec<CodeMessage<*, DirectCallVerticle<*>>>(
-          CodeMessage::class.qualifiedName!!))
+        vertx.eventBus().registerCodec(
+          PassThroughCodec<CodeMessage<*, DirectCallVerticle<*>>>(CodeMessage::class.qualifiedName!!))
+
+        vertx.eventBus().registerDefaultCodec(
+          Any::class.java, PassThroughCodec<Any>(Any::class.qualifiedName!!))
 
         val commandSender: CommandSender = kodein.i()
 
@@ -156,6 +160,7 @@ class PostgresIntegrationTests: AbstractVertxTest() {
         CompositeFuture.all(
           verticleDeployer.deployVerticles(vertx, listOf(factoryVerticle)).map{it.future()}).await()
         log.debug("VerticleFactoryVerticle deployed")
+        factoryVerticle.configureMaximumNumberOfVerticleInstancesToDeploy(10)
 
         val deployments = verticlesToDeploy.flatMap { classToDeploy ->
           log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
