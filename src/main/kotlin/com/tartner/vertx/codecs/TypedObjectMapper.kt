@@ -35,7 +35,7 @@ import com.tartner.utilities.jackson.JacksonArrowOptionSomeDeserializer
 
 /**
 Note: This class should only be used for "internal"/trusted serialization/deserialization. There
-are security issues around Jackson Datamapper and `activateDefaultTyping...` is part of what allows
+are security issues around Jackson Data mapper and `activateDefaultTyping...` is part of what allows
 the exploit to happen. As long as the json is trusted, this class is safe to use. So there needs to
 be another class that is used for stuff coming in over the internet.
  */
@@ -72,6 +72,6 @@ class ExternalObjectMapper: ObjectMapper() {
   init {
     registerKotlinModule()
     registerModule(JavaTimeModule())
-    disableDefaultTyping()
+    deactivateDefaultTyping()
   }
 }

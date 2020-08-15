@@ -30,6 +30,14 @@ class UUIDExtensionsTest {
   }
 
   @Test
+  fun toUUID() {
+    val uuidString = "4d866a47-9a89-45b0-b6a0-484641e61698"
+    val expectedUuid = UUID.fromString(uuidString)
+    val uuid = uuidString.toUUID()
+    uuid shouldBe expectedUuid
+  }
+
+  @Test
   fun toStringFastClearedTest() {
     val uuid = UUID.fromString("4d866a47-9a89-45b0-b6a0-484641e61698")
     val cleared: String = uuid.toStringFastClear()
