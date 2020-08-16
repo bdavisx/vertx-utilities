@@ -30,6 +30,8 @@ import com.tartner.vertx.DefaultSuccessReply
 import com.tartner.vertx.DirectCallVerticle
 import com.tartner.vertx.ErrorReply
 import com.tartner.vertx.FailureReply
+import com.tartner.vertx.VCommand
+import com.tartner.vertx.VQuery
 import com.tartner.vertx.codecs.TypedObjectMapper
 import com.tartner.vertx.commands.CommandFailedDueToException
 import com.tartner.vertx.cqrs.database.EventSourcingPool
@@ -47,6 +49,15 @@ import org.intellij.lang.annotations.Language
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+data class AggregateEventsQuery(val aggregateId: AggregateId, val aggregateVersion: Long): VQuery
+data class LatestAggregateSnapshotQuery(val aggregateId: AggregateId): VCommand
+
+data class StoreAggregateEventsCommand(
+  val aggregateId: AggregateId, val events: List<AggregateEvent>): VCommand
+data class StoreAggregateSnapshotCommand(
+  val aggregateId: AggregateId, val snapshot: AggregateSnapshot): VCommand
+
+
 @PercentOfMaximumVerticleInstancesToDeploy(100)
 class EventSourcingApi(
   private val databasePool: EventSourcingPool,
@@ -61,14 +72,14 @@ class EventSourcingApi(
 
   // TODO: where do we put the retry logic? Here or a higher level? And should it be a
   //  circuit breaker? (probably should)
-  suspend fun storeAggregateEvents(aggregateId: AggregateId, events: List<AggregateEvent>)
+  suspend fun storeAggregateEvents(command: StoreAggregateEventsCommand)
     = actAndReply {
 
     var connection: SqlConnection? = null
     try {
       log.debugIf { "Getting ready to convert events to json" }
       val eventsValues =
-        events.map { event: AggregateEvent ->
+        command.events.map { event: AggregateEvent ->
           val eventSerialized = databaseMapper.writeValueAsString(event)
           Tuple.of(event.aggregateId.id, event.aggregateVersion.version, eventSerialized)
         }
@@ -92,8 +103,9 @@ class EventSourcingApi(
     order by version_number
     """.trimIndent()
 
-  suspend fun loadAggregateEvents(aggregateId: AggregateId, aggregateVersion: Long)
+  suspend fun loadAggregateEvents(query: AggregateEventsQuery)
     = actAndReply<Either<CommandFailedDueToException, List<AggregateEvent>>> {
+    val (aggregateId: AggregateId, aggregateVersion: Long) = query
 
     var connection: SqlConnection? = null
     try {
@@ -121,11 +133,13 @@ class EventSourcingApi(
       insert into event_sourcing.snapshots (aggregate_id, version_number, data)
       values ($1, $2, cast($3 as json))""".trimIndent()
 
-  suspend fun storeAggregateSnapshot(snapshot: AggregateSnapshot)
-    = actAndReply {storeAggregateSnapshotActAndReply(snapshot)}
+  suspend fun storeAggregateSnapshot(snapshot: AggregateSnapshot) = actAndReply {
+    storeAggregateSnapshotActAndReply(StoreAggregateSnapshotCommand(snapshot.aggregateId, snapshot))
+  }
 
-  internal suspend fun storeAggregateSnapshotActAndReply(snapshot: AggregateSnapshot)
+  internal suspend fun storeAggregateSnapshotActAndReply(command: StoreAggregateSnapshotCommand)
     : Either<FailureReply, DefaultSuccessReply> {
+    val snapshot = command.snapshot
 
     var connection: SqlConnection? = null
     try {
@@ -163,13 +177,13 @@ class EventSourcingApi(
       order by version_number desc
       limit 1""".trimIndent()
 
-  suspend fun loadLatestAggregateSnapshot(aggregateId: AggregateId) = actAndReply {
+  suspend fun loadLatestAggregateSnapshot(query: LatestAggregateSnapshotQuery) = actAndReply {
     var connection: SqlConnection? = null
     try {
       // TODO: error handling
       connection = databasePool.connection.await()
 
-      val parameters = Tuple.of(aggregateId.id)
+      val parameters = Tuple.of(query.aggregateId.id)
       log.debugIf { "Running snapshot load sql: '$selectSnapshotSql' with parameters: $parameters" }
       val snapshotResultSet = connection.queryWithParamsAsync(selectSnapshotSql, parameters)
 

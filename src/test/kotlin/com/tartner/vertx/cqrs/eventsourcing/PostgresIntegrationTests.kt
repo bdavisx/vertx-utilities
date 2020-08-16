@@ -30,10 +30,8 @@ import com.tartner.vertx.CodeMessage
 import com.tartner.vertx.DirectCallVerticle
 import com.tartner.vertx.codecs.PassThroughCodec
 import com.tartner.vertx.commands.CommandFailedDueToException
-import com.tartner.vertx.commands.CommandSender
 import com.tartner.vertx.kodein.KodeinVerticleFactoryVerticle
 import com.tartner.vertx.kodein.VerticleDeployer
-import com.tartner.vertx.kodein.i
 import com.tartner.vertx.setupVertxKodein
 import io.kotest.assertions.fail
 import io.kotest.matchers.shouldBe
@@ -89,8 +87,6 @@ class PostgresIntegrationTests: AbstractVertxTest() {
         log.debug("VerticleFactoryVerticle deployed")
         factoryVerticle.configureMaximumNumberOfVerticleInstancesToDeploy(10)
 
-        val commandSender: CommandSender = kodein.i()
-
         // TODO: this code is repeated in multiple places
         val deployments = verticlesToDeploy.flatMap { classToDeploy ->
           log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
@@ -108,12 +104,12 @@ class PostgresIntegrationTests: AbstractVertxTest() {
           context.assertTrue(addResult is Either.Right<*>)
 
           val loadResult: Either<CommandFailedDueToException, Option<AggregateSnapshot>> =
-            verticle.loadLatestAggregateSnapshot(aggregateId)
+            verticle.loadLatestAggregateSnapshot(LatestAggregateSnapshotQuery(aggregateId))
 
           when (loadResult) {
             is Either.Left -> context.fail()
             is Either.Right -> {
-              if (loadResult.b == null) { context.fail("No snapshot was returned") }
+              if (loadResult.b.isEmpty()) { context.fail("No snapshot was returned") }
 
               val response: Option<AggregateSnapshot> = loadResult.b
               val loadedSnapshot: AggregateSnapshot = response.getOrElse {
@@ -153,8 +149,6 @@ class PostgresIntegrationTests: AbstractVertxTest() {
         vertx.eventBus().registerDefaultCodec(
           Any::class.java, PassThroughCodec<Any>(Any::class.qualifiedName!!))
 
-        val commandSender: CommandSender = kodein.i()
-
         val factoryVerticle = kodein.instance<KodeinVerticleFactoryVerticle>()
         val verticleDeployer = kodein.instance<VerticleDeployer>()
         CompositeFuture.all(
@@ -178,7 +172,8 @@ class PostgresIntegrationTests: AbstractVertxTest() {
             events.add(EventSourcedTestAggregateNameChanged(aggregateId, AggregateVersion(aggregateVersion++), "New Name"))
           }
 
-          val storeResult = verticle.storeAggregateEvents(aggregateId, events)
+          val storeResult =
+            verticle.storeAggregateEvents(StoreAggregateEventsCommand(aggregateId, events))
 
           when (storeResult) {
             is Either.Left -> {
@@ -186,7 +181,8 @@ class PostgresIntegrationTests: AbstractVertxTest() {
               context.fail(storeResult.a.toString())
             }
             is Either.Right -> {
-              val loadResult = verticle.loadAggregateEvents(aggregateId, Long.MIN_VALUE)
+              val loadResult =
+                verticle.loadAggregateEvents(AggregateEventsQuery(aggregateId, Long.MIN_VALUE))
 
               when (loadResult) {
                 is Either.Left -> {

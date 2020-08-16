@@ -85,7 +85,4 @@ interface AggregateCommand: DomainCommand, HasAggregateId
 
 interface CommandReply: VSerializable
 
-interface Query: VSerializable, HasCorrelationId
-interface QueryReply: VSerializable
-
 interface AggregateSnapshot: VSerializable, HasAggregateVersion
