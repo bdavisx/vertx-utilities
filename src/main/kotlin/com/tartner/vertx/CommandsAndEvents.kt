@@ -69,7 +69,11 @@ interface AggregateEvent: DomainEvent, HasAggregateVersion
 /** This indicates an error happened that needs to be handled at a higher/different level. */
 interface ErrorEvent: DomainEvent
 
-data class CorrelationId(val id: String)
+data class CorrelationId(val id: String) {
+  companion object {
+    val NotApplicable = CorrelationId("NotApplicable")
+  }
+}
 interface HasCorrelationId {
   val correlationId: CorrelationId
 }
