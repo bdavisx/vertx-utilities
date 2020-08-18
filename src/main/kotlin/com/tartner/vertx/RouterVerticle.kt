@@ -26,12 +26,11 @@ import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
 import org.slf4j.LoggerFactory
 
+/** An address will be registered that takes a RoutingContext message and can do whatever with it. */
+data class AddRouteCommand(val handlerAddress: String, val route: String): VCommand
 data class HandleSubrouterCallCommand(val routingContext: RoutingContext): VCommand
 data class SubrouterAdded(val handlerAddress: String, val path: String): VEvent
 
-/*
-An address will be registered that takes a RoutingContext message and can do whatever with it.
- */
 @PercentOfMaximumVerticleInstancesToDeploy(100)
 class RouterVerticle(
   private val commandSender: CommandSender,
@@ -54,7 +53,8 @@ class RouterVerticle(
     server.requestHandler(mainRouter).listen(8080)
   }
 
-  suspend fun addRoute(handlerAddress: String, route: String) = fireAndForget {
+  suspend fun addRoute(command: AddRouteCommand) = fireAndForget {
+    val (handlerAddress, route) = command
     log.debugIf {"adding route: address: $handlerAddress; route: $route"}
     eventPublisher.publish(SubrouterAdded(handlerAddress, route))
   }

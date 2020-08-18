@@ -90,6 +90,6 @@ class CoroutineDelegateVerticle(
   suspend private fun registerRoute(route: String,
     handler: SuspendableMessageHandler<HandleSubrouterCallCommand>) {
     commandRegistrar.registerCommandHandler(this, route, handler)
-    routerVerticle.addRoute(route, route)
+    routerVerticle.addRoute(AddRouteCommand(route, route))
   }
 }

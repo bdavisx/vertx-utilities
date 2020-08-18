@@ -66,7 +66,7 @@ class CoroutineDelegateAutoRegistrar(
   suspend private fun registerAPIHandlers(delegate: CoroutineDelegateAutoRegister, scope: CoroutineScope) {
     delegate.routeHandlers.forEach { (route, handler) ->
       commandRegistrar.registerCommandHandler(scope, route, handler)
-      routerVerticle.addRoute(route, route)
+      routerVerticle.addRoute(AddRouteCommand(route, route))
     }
   }
 }
