@@ -128,7 +128,7 @@ class KodeinVerticleFactoryVerticle(
 
     // why the special RouterVerticle treatment?
     if(verticleClass != RouterVerticle::class) {
-      deploymentPromises.forEach { log.debug("Deployment Future: ${it}") }
+      deploymentPromises.forEach { log.debug("Deployment Future: $it") }
     }
 
     eventPublisher.publish(VerticleInstancesDeployedEvent(verticleClass, numberOfInstances))
@@ -184,7 +184,7 @@ class KodeinVerticleFactoryVerticle(
       countAnnotation?.count ?: 1
     }
 
-    log.debugIf { "Setting number of instances to ${numberOfInstances} for ${verticleClass.qualifiedName}" }
+    log.debugIf { "Setting number of instances to $numberOfInstances for ${verticleClass.qualifiedName}" }
     return numberOfInstances
   }
 

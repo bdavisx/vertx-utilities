@@ -35,7 +35,7 @@ class EventRegistrar(
 
   fun <T: Any>  registerEventHandler(
     eventClass: KClass<T>, handler: MessageHandler<T>): MessageConsumer<T> =
-    eventBus.consumer<T>(eventClass.qualifiedName) { message -> handler(message.body()) }
+    eventBus.consumer(eventClass.qualifiedName) { message -> handler(message.body()) }
 
   fun <T: Any> registerEventHandlerSuspendable(
     scope: CoroutineScope, eventClass: KClass<T>, handler: SuspendableMessageHandler<T>) =

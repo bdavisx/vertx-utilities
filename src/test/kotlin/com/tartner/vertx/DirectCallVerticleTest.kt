@@ -84,7 +84,7 @@ class DirectCallVerticleTest {
   }
 
   @Test(timeout = 2000)
-  fun callFunctionsSingleDeployment(context: io.vertx.ext.unit.TestContext) {
+  fun callFunctionsSingleDeployment(context: TestContext) {
     val async = context.async()
 
     vertx.runOnContext {
@@ -119,7 +119,7 @@ class DirectCallVerticleTest {
   }
 
   @Test(timeout = 2000)
-  fun callFunctionsMultipleDeployments(context: io.vertx.ext.unit.TestContext) {
+  fun callFunctionsMultipleDeployments(context: TestContext) {
     val async = context.async()
 
     vertx.runOnContext {

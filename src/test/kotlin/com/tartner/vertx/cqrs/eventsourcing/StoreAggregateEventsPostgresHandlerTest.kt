@@ -16,7 +16,7 @@
 
 package com.tartner.vertx.cqrs.eventsourcing
 
-class StoreAggregateEventsPostgresHandlerTest() {
+class StoreAggregateEventsPostgresHandlerTest {
 //  val databasePool: EventSourcingPool = mockk()
 //  val connection: SqlConnection = mockk(relaxed = true)
 //

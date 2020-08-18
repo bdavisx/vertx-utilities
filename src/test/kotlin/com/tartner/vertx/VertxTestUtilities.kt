@@ -76,9 +76,8 @@ fun createTestVertxObjects(modules: Iterable<Kodein.Module>, vertx: Vertx, testC
 
   vertx.exceptionHandler(testContext.exceptionHandler())
 
-  val vertxObjects = TestVertxObjects(vertx, kodein, kodein.i(), kodein.i(), kodein.i(), kodein.i(),
+  return TestVertxObjects(vertx, kodein, kodein.i(), kodein.i(), kodein.i(), kodein.i(),
     kodein.i(), kodein.i())
-  return vertxObjects
 }
 
 fun tupleShouldBe(tuple: Tuple, expectedTuple: Tuple) {

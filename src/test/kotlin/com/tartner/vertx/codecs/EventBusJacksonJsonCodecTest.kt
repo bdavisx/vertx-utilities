@@ -76,7 +76,7 @@ class EventBusJacksonJsonCodecTest {
     val s1 = Date()
     codec.encodeToWire(buffer, test1s)
     val s2 = Date().time - s1.time
-    println("encodeToWire time ${s2}")
+    println("encodeToWire time $s2")
 
 //        println(buffer)
     println(buffer.length())
@@ -84,7 +84,7 @@ class EventBusJacksonJsonCodecTest {
     val s3 = Date()
     val rawDecode = codec.decodeFromWire(0, buffer)
     val s4 = Date().time - s3.time
-    println("decodeFromWire time ${s4}")
+    println("decodeFromWire time $s4")
 
     val tests1: Test1Array = rawDecode as Test1Array
     tests1.test1s.size shouldBe tests.size

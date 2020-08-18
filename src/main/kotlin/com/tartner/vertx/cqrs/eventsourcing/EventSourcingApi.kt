@@ -104,7 +104,7 @@ class EventSourcingApi(
     """.trimIndent()
 
   suspend fun loadAggregateEvents(query: AggregateEventsQuery)
-    = actAndReply<Either<CommandFailedDueToException, List<AggregateEvent>>> {
+    : Either<CommandFailedDueToException, List<AggregateEvent>> = actAndReply {
     val (aggregateId: AggregateId, aggregateVersion: Long) = query
 
     var connection: SqlConnection? = null

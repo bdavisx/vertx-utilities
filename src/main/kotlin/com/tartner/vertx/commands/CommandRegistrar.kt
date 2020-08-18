@@ -52,13 +52,13 @@ class CommandRegistrar(
   fun <T: Any> registerCommandHandler(address: String, handler: MessageHandler<T>)
     : MessageConsumer<T> {
     log.debugIf { "Registering command handler ($handler) for address: $address" }
-    return eventBus.localConsumer<T>(address) { message -> handler(message.body()) }
+    return eventBus.localConsumer(address) { message -> handler(message.body()) }
   }
 
   fun <T: Any> registerCommandHandler(address: String, handler: ReplyMessageHandler<T>)
     : MessageConsumer<T> {
     log.debugIf { "Registering command handler ($handler) for address: $address" }
-    return eventBus.localConsumer<T>(address) {
+    return eventBus.localConsumer(address) {
       message -> handler(message.body()) { commandSender.reply(message, it) }
     }
   }
@@ -77,7 +77,7 @@ class CommandRegistrar(
   fun <T: Any> registerCommandHandler(scope: CoroutineScope, address: String,
     handler: SuspendableMessageHandler<T>): MessageConsumer<T> {
       log.debugIf {"Registering coroutine command handler ($handler) for address $address in scope $scope"}
-      return eventBus.localConsumer<T>(address) { message ->
+      return eventBus.localConsumer(address) { message ->
         scope.launch { handler(message.body()) }
       }
   }
@@ -85,7 +85,7 @@ class CommandRegistrar(
   fun <T: Any> registerCommandHandler(scope: CoroutineScope, address: String,
     handler: SuspendableReplyMessageHandler<T>): MessageConsumer<T> {
     log.debugIf {"Registering coroutine command handler ($handler) for address $address in scope $scope"}
-    return eventBus.localConsumer<T>(address) { message ->
+    return eventBus.localConsumer(address) { message ->
       scope.launch { handler(message.body()) { commandSender.reply(message, it) } }
     }
   }

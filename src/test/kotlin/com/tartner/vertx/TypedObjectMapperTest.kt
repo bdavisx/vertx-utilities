@@ -24,7 +24,7 @@ import org.junit.Test
 data class InsideValue(val inside: Int, val string: String): VSerializable
 data class TestCommand(val number: Int, val string: String, val insideValue: InsideValue): VCommand
 
-class TypedObjectMapperTest() {
+class TypedObjectMapperTest {
   @Test
   fun serializeDeserializeWorks() {
     val serializer = TypedObjectMapper()

@@ -23,8 +23,8 @@ import com.tartner.vertx.AggregateVersion
 import com.tartner.vertx.CorrelationId
 import com.tartner.vertx.newCorrelationId
 
-sealed class TestEventSourcedAggregateCommands(): AggregateCommand
-sealed class TestEventSourcedAggregateEvents(): AggregateEvent
+sealed class TestEventSourcedAggregateCommands: AggregateCommand
+sealed class TestEventSourcedAggregateEvents: AggregateEvent
 
 data class CreateEventSourcedTestAggregateCommand(
   override val aggregateId: AggregateId, val name: String,

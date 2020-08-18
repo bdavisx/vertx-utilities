@@ -85,7 +85,7 @@ class VerticleDeployerTest {
   bind<MultipleDeploymentVerticle>() with factory {id: String -> MultipleDeploymentVerticle(id)}
 }
 
-class SimpleVerticle(): CoroutineVerticle()
+class SimpleVerticle: CoroutineVerticle()
 
 /*
  * In general, you *don't* want to have any local data that is variable on the multiple deployment

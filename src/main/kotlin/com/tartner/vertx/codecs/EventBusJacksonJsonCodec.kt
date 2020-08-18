@@ -44,12 +44,11 @@ class EventBusJacksonJsonCodec(private val mapper: TypedObjectMapper): MessageCo
   }
 
   override fun decodeFromWire(initialPosition: Int, buffer: Buffer): Any {
-    val position = initialPosition
-    val size = buffer.getInt(position)
-    val jsonPosition = position + 4
+    val size = buffer.getInt(initialPosition)
+    val jsonPosition = initialPosition + 4
     val json = buffer.getString(jsonPosition, jsonPosition + size)
 
     // don't see a way around the unchecked cast, since we lose the T type at runtime
-    @Suppress("UNCHECKED_CAST") return mapper.readValue<Any>(json)
+    @Suppress("UNCHECKED_CAST") return mapper.readValue(json)
   }
 }

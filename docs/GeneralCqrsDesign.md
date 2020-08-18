@@ -66,5 +66,5 @@ So then a class that needs the QueryJDBCClient could look like this:
 ```kotlin
 class UsersQueryHandlerVerticle @Inject constructor(
     val jdbcClient: QueryJDBCClient, val commandBusAdapter: CommandBusAdapter)
-    : AbstractVerticle() {}
+    : AbstractVerticle() 
 ```

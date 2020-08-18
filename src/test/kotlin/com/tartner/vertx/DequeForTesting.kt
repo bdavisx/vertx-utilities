@@ -19,8 +19,7 @@ package com.tartner.vertx
 
 /** This is a very minimal class, not thread safe at all. */
 class DequeForTesting<T>: Iterable<T> {
-  class Node<T>(value: T) {
-    var value: T = value
+  class Node<T>(var value: T) {
     var next: Node<T>? = null
     var previous: Node<T>? = null
 

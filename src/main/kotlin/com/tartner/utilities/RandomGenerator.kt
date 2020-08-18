@@ -21,7 +21,7 @@ import java.util.UUID
 import java.util.concurrent.ThreadLocalRandom
 import kotlin.math.round
 
-class RandomGenerator() {
+class RandomGenerator {
   private val random get() = ThreadLocalRandom.current()
 
   fun generateId(): String = UUID.randomUUID().toStringFast()
