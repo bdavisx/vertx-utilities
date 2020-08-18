@@ -19,6 +19,8 @@ package com.tartner.vertx
 import com.tartner.utilities.debugIf
 import com.tartner.vertx.codecs.EventBusJacksonJsonCodec
 import com.tartner.vertx.cqrs.eventsourcing.EventSourcingApi
+import com.tartner.vertx.kodein.DeployVerticleDelegatesCommand
+import com.tartner.vertx.kodein.DeployVerticleInstancesCommand
 import com.tartner.vertx.kodein.KodeinVerticleFactoryVerticle
 import com.tartner.vertx.kodein.VerticleDeployer
 import com.tartner.vertx.kodein.i
@@ -58,7 +60,7 @@ suspend fun startLibrary(vertx: Vertx, kodein: DKodein) {
       log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
       // TODO: what if this returns a failure, need to test the handling verticle to see what
       //  happens with a failure
-      factoryVerticle.deployVerticleInstances(classToDeploy)
+      factoryVerticle.deployVerticleInstances(DeployVerticleInstancesCommand(classToDeploy))
     }
   }
 
@@ -68,6 +70,6 @@ suspend fun startLibrary(vertx: Vertx, kodein: DKodein) {
     log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
     // TODO: what if this returns a failure, need to test the handling verticle to see what
     //  happens with a failure
-    factoryVerticle.deployVerticleDelegates(classToDeploy)
+    factoryVerticle.deployVerticleDelegates(DeployVerticleDelegatesCommand(classToDeploy))
   }
 }

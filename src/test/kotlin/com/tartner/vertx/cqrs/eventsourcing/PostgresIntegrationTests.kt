@@ -30,6 +30,8 @@ import com.tartner.vertx.CodeMessage
 import com.tartner.vertx.DirectCallVerticle
 import com.tartner.vertx.codecs.PassThroughCodec
 import com.tartner.vertx.commands.CommandFailedDueToException
+import com.tartner.vertx.kodein.ConfigureMaximumNumberOfVerticleInstancesToDeployCommand
+import com.tartner.vertx.kodein.DeployVerticleInstancesCommand
 import com.tartner.vertx.kodein.KodeinVerticleFactoryVerticle
 import com.tartner.vertx.kodein.VerticleDeployer
 import com.tartner.vertx.setupVertxKodein
@@ -85,12 +87,13 @@ class PostgresIntegrationTests: AbstractVertxTest() {
         CompositeFuture.all(
           verticleDeployer.deployVerticles(vertx, listOf(factoryVerticle)).map{it.future()}).await()
         log.debug("VerticleFactoryVerticle deployed")
-        factoryVerticle.configureMaximumNumberOfVerticleInstancesToDeploy(10)
+        factoryVerticle.configureMaximumNumberOfVerticleInstancesToDeploy(
+          ConfigureMaximumNumberOfVerticleInstancesToDeployCommand(10))
 
         // TODO: this code is repeated in multiple places
         val deployments = verticlesToDeploy.flatMap { classToDeploy ->
           log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
-          factoryVerticle.deployVerticleInstances(classToDeploy)
+          factoryVerticle.deployVerticleInstances(DeployVerticleInstancesCommand(classToDeploy))
         }
         val verticle = deployments.first().instance as EventSourcingApi
 
@@ -154,11 +157,12 @@ class PostgresIntegrationTests: AbstractVertxTest() {
         CompositeFuture.all(
           verticleDeployer.deployVerticles(vertx, listOf(factoryVerticle)).map{it.future()}).await()
         log.debug("VerticleFactoryVerticle deployed")
-        factoryVerticle.configureMaximumNumberOfVerticleInstancesToDeploy(10)
+        factoryVerticle.configureMaximumNumberOfVerticleInstancesToDeploy(
+          ConfigureMaximumNumberOfVerticleInstancesToDeployCommand(10))
 
         val deployments = verticlesToDeploy.flatMap { classToDeploy ->
           log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
-          factoryVerticle.deployVerticleInstances(classToDeploy)
+          factoryVerticle.deployVerticleInstances(DeployVerticleInstancesCommand(classToDeploy))
         }
         val verticle = deployments.first().instance as EventSourcingApi
 
