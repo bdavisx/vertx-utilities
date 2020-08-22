@@ -83,7 +83,8 @@ class KodeinVerticleFactoryVerticle(
   companion object {
     const val numberOfVerticlesKey = "NumberOfVerticlesAt100Percent"
 
-    val defaultMaximumInstancesToDeploy = CpuCoreSensor.availableProcessors() * 50
+    // TODO: configurable
+    val defaultMaximumInstancesToDeploy = CpuCoreSensor.availableProcessors() * 2
   }
 
   private var maximumVerticleInstancesToDeploy: Int = defaultMaximumInstancesToDeploy
