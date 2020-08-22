@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="GradleLocalSettings">
+    <option name="modificationStamps">
+      <map>
+        <entry key="C:/src/checklists-main/checklists-domain" value="2960880566834" />
+        <entry key="C:/src/exampleCode/gradle-script-kotlin" value="1485225647267" />
+        <entry key="C:/src/exampleCode/kotlin-stuff/example-ratpack-gradle-kotlin-app" value="1488514012091" />
+        <entry key="C:/src/exampleCode/kotlin-stuff/gradle-script-kotlin" value="1485225647267" />
+        <entry key="C:/src/exampleCode/ratpack" value="2977031345518" />
+        <entry key="C:/src/exampleCode/reactor-stuff/reactor-core" value="2976245195908" />
+        <entry key="C:/src/exampleCode/reakt" value="2974890111461" />
+        <entry key="C:/src/kotlintest" value="1466921730000" />
+        <entry key="C:/src/space-game-gdx" value="2963368988543" />
+        <entry key="C:/temp/t" value="2977340655277" />
+        <entry key="D:/source/DanceHoursJava" value="1428634669174" />
+        <entry key="D:/source/LibrariesSource/hibernate-orm" value="31985090887387" />
+        <entry key="D:/source/LibrariesSource/quasar" value="4332565340467" />
+        <entry key="D:/source/LibrariesSource/spring-framework" value="5734428283096" />
+        <entry key="D:/source/LibrariesSource/spring-security" value="74463652292959" />
+        <entry key="D:/source/RxJava" value="2854931819849" />
+      </map>
+    </option>
+    <option name="projectSyncType">
+      <map>
+        <entry key="$USER_HOME$/src/checklists-main-kotlin-vertx" value="PREVIEW" />
+        <entry key="$USER_HOME$/src/city-builder-main" value="PREVIEW" />
+        <entry key="$USER_HOME$/src/exampleCode/javafx/jidefx-oss" value="PREVIEW" />
+        <entry key="$USER_HOME$/src/exampleCode/kotlin/Kodein-DI" value="PREVIEW" />
+        <entry key="$USER_HOME$/src/exampleCode/kotlin/Validation" value="PREVIEW" />
+        <entry key="$USER_HOME$/src/exampleCode/mongoDb/mongo-java-driver" value="PREVIEW" />
+        <entry key="$USER_HOME$/src/old-checklists/MyWorkflowsMVCG" value="PREVIEW" />
+        <entry key="$USER_HOME$/src/war-operations-main" value="PREVIEW" />
+        <entry key="$USER_HOME$/tmp/checklists-prior" value="PREVIEW" />
+        <entry key="/other-drive/src/city-builder-main" value="PREVIEW" />
+        <entry key="/other-drive/src/exampleCode/javafx/jidefx-oss" value="PREVIEW" />
+        <entry key="/other-drive/src/exampleCode/javafx/openjdk-jfx" value="PREVIEW" />
+        <entry key="/other-drive/src/exampleCode/kotlin/fuel" value="PREVIEW" />
+        <entry key="/other-drive/src/exampleCode/kotlin/khexgrid" value="PREVIEW" />
+        <entry key="/other-drive/src/exampleCode/kotlin/kotlintest" value="PREVIEW" />
+        <entry key="/other-drive/src/exampleCode/kotlin/kotlinx.coroutines" value="PREVIEW" />
+        <entry key="/other-drive/src/exampleCode/kotlin/mixite" value="PREVIEW" />
+        <entry key="/other-drive/src/exampleCode/kotlin/mixite.example" value="PREVIEW" />
+        <entry key="/other-drive/src/warops-gradle" value="PREVIEW" />
+      </map>
+    </option>
+  </component>
+</project>
