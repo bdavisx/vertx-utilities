@@ -50,6 +50,7 @@ import io.vertx.kotlin.coroutines.dispatcher
 import io.vertx.sqlclient.Tuple
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.kodein.di.generic.instance
@@ -68,6 +69,7 @@ class PostgresIntegrationTests: AbstractVertxTest() {
   val verticlesToDeploy = listOf<KClass<out CoroutineVerticle>>(EventSourcingApi::class)
 
   @Test(timeout = 2500)
+  @Ignore
   fun snapshotInsertAndQuery(context: TestContext) {
     val async = context.async()
 
@@ -135,6 +137,7 @@ class PostgresIntegrationTests: AbstractVertxTest() {
   }
 
   @Test(timeout = 5000)
+  @Ignore
   fun eventsInsertAndQuery(context: TestContext) {
     val async = context.async()
 

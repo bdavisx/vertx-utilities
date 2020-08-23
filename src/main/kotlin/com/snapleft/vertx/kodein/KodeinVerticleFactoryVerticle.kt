@@ -78,13 +78,14 @@ class KodeinVerticleFactoryVerticle(
 ): DirectCallVerticle<KodeinVerticleFactoryVerticle>(
     KodeinVerticleFactoryVerticle::class.qualifiedName!!) {
 
-  private val log = LoggerFactory.getLogger(KodeinVerticleFactoryVerticle::class.java)
-
   companion object {
+    private val log = LoggerFactory.getLogger(KodeinVerticleFactoryVerticle::class.java)
+
     const val numberOfVerticlesKey = "NumberOfVerticlesAt100Percent"
 
-    // TODO: configurable
-    val defaultMaximumInstancesToDeploy = CpuCoreSensor.availableProcessors() * 2
+    // TODO: configurable by environment variable
+    val defaultMaximumInstancesToDeploy =
+      CpuCoreSensor.availableProcessors() * if (log.isDebugEnabled) 2 else 50
   }
 
   private var maximumVerticleInstancesToDeploy: Int = defaultMaximumInstancesToDeploy
