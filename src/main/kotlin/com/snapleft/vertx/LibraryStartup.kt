@@ -29,14 +29,14 @@ import io.vertx.core.CompositeFuture
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
-import org.kodein.di.DKodein
+import org.kodein.di.DirectDI
 import org.kodein.di.generic.instance
 import org.slf4j.LoggerFactory
 import kotlin.reflect.KClass
 
 private val log = LoggerFactory.getLogger(VSerializable::class.java)
 
-suspend fun startLibrary(vertx: Vertx, kodein: DKodein) {
+suspend fun startLibrary(vertx: Vertx, kodein: DirectDI) {
   log.debug("Registering the EventBusJacksonJsonCodec codec")
   vertx.eventBus().registerCodec(EventBusJacksonJsonCodec(kodein.i()))
 
