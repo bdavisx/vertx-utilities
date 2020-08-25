@@ -15,7 +15,7 @@
  *
  */
 
-package com.snapleft.vertx.kodein
+package com.snapleft.vertx.dependencyinjection
 
 import com.snapleft.utilities.RandomGenerator
 import com.snapleft.vertx.CoroutineDelegateAutoRegistrar
@@ -32,14 +32,14 @@ import io.vertx.core.Vertx
 import io.vertx.core.eventbus.EventBus
 import io.vertx.core.file.FileSystem
 import io.vertx.core.shareddata.SharedData
-import org.kodein.di.Kodein
+import org.kodein.di.DI
+import org.kodein.di.bind
 import org.kodein.di.direct
-import org.kodein.di.generic.bind
-import org.kodein.di.generic.provider
-import org.kodein.di.generic.singleton
+import org.kodein.di.provider
+import org.kodein.di.singleton
 
-fun vertxUtilitiesModule(vertx: Vertx) = Kodein.Module("vertxUtilitiesModule") {
-  bind<Kodein>() with provider { kodein }
+fun vertxUtilitiesModule(vertx: Vertx) = DI.Module("vertxUtilitiesModule") {
+  bind<DI>() with provider { di }
 
   bind<Vertx>() with singleton { vertx }
   bind<EventBus>() with singleton { vertx.eventBus() }
@@ -57,7 +57,7 @@ fun vertxUtilitiesModule(vertx: Vertx) = Kodein.Module("vertxUtilitiesModule") {
 
   bind<CoroutineDelegateVerticleFactory>() with singleton { CoroutineDelegateVerticleFactory(i(), i(), i(), i()) }
   bind<CoroutineDelegateAutoRegistrar>() with singleton { CoroutineDelegateAutoRegistrar(i(), i(), i(), i()) }
-  bind<KodeinVerticleFactoryVerticle>() with singleton { KodeinVerticleFactoryVerticle(kodein.direct, i(), i(), i()) }
+  bind<DependencyInjectionVerticleFactoryVerticle>() with singleton { DependencyInjectionVerticleFactoryVerticle(di.direct, i(), i(), i()) }
 
   bind<EventSourcingApi>() with provider { EventSourcingApi(i(), i()) }
 

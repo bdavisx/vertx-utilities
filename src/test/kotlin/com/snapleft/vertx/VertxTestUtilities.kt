@@ -21,28 +21,28 @@ import com.snapleft.vertx.codecs.EventBusJacksonJsonCodec
 import com.snapleft.vertx.commands.CommandRegistrar
 import com.snapleft.vertx.commands.CommandSender
 import com.snapleft.vertx.cqrs.database.databaseFactoryModule
+import com.snapleft.vertx.dependencyinjection.VerticleDeployer
+import com.snapleft.vertx.dependencyinjection.i
+import com.snapleft.vertx.dependencyinjection.vertxUtilitiesModule
 import com.snapleft.vertx.events.EventPublisher
 import com.snapleft.vertx.events.EventRegistrar
-import com.snapleft.vertx.kodein.VerticleDeployer
-import com.snapleft.vertx.kodein.i
-import com.snapleft.vertx.kodein.vertxUtilitiesModule
 import io.kotest.matchers.shouldBe
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.EventBus
 import io.vertx.ext.unit.TestContext
 import io.vertx.sqlclient.Tuple
-import org.kodein.di.DKodein
-import org.kodein.di.Kodein
+import org.kodein.di.DI
+import org.kodein.di.DirectDI
 import org.kodein.di.direct
 import org.kodein.di.generic.instance
 
-data class VertxKodeinTestObjects(val vertx: Vertx, val dkodein: DKodein)
+data class VertxKodeinTestObjects(val vertx: Vertx, val dkodein: DirectDI)
 
-fun testModule() = Kodein.Module("testModule") {
+fun testModule() = DI.Module("testModule") {
 }
 
 
-fun setupVertxKodein(modules: Iterable<Kodein.Module>, vertx: Vertx, testContext: TestContext)
+fun setupVertxKodein(modules: Iterable<DI.Module>, vertx: Vertx, testContext: TestContext)
   : VertxKodeinTestObjects {
 
   vertx.exceptionHandler(testContext.exceptionHandler())
@@ -51,7 +51,7 @@ fun setupVertxKodein(modules: Iterable<Kodein.Module>, vertx: Vertx, testContext
     mutableListOf(vertxUtilitiesModule(vertx), databaseFactoryModule, testModule())
 
   modulesWithVertx.addAll(modules)
-  val dkodein = Kodein { modulesWithVertx.forEach { import(it) } }.direct
+  val dkodein = DI { modulesWithVertx.forEach { import(it) } }.direct
 
   vertx.eventBus().registerCodec(EventBusJacksonJsonCodec(dkodein.instance()))
 
@@ -60,7 +60,7 @@ fun setupVertxKodein(modules: Iterable<Kodein.Module>, vertx: Vertx, testContext
 
 data class TestVertxObjects(
   val vertx: Vertx,
-  val kodein: DKodein,
+  val kodein: DirectDI,
   val commandSender: CommandSender,
   val verticleDeployer: VerticleDeployer,
   val commandRegistrar: CommandRegistrar,
@@ -69,7 +69,7 @@ data class TestVertxObjects(
   val eventBus: EventBus
 )
 
-fun createTestVertxObjects(modules: Iterable<Kodein.Module>, vertx: Vertx, testContext: TestContext)
+fun createTestVertxObjects(modules: Iterable<DI.Module>, vertx: Vertx, testContext: TestContext)
   : TestVertxObjects {
 
   val (_, kodein) = setupVertxKodein(modules, vertx, testContext)

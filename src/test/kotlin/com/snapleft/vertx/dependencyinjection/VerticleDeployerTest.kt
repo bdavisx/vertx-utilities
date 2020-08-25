@@ -15,7 +15,7 @@
  *
  */
 
-package com.snapleft.vertx.kodein
+package com.snapleft.vertx.dependencyinjection
 
 import com.snapleft.vertx.setupVertxKodein
 import io.kotest.matchers.shouldBe
@@ -31,10 +31,10 @@ import kotlinx.coroutines.launch
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.kodein.di.Kodein
-import org.kodein.di.generic.bind
-import org.kodein.di.generic.factory
-import org.kodein.di.generic.provider
+import org.kodein.di.DI
+import org.kodein.di.bind
+import org.kodein.di.factory
+import org.kodein.di.provider
 import org.slf4j.LoggerFactory
 
 @RunWith(VertxUnitRunner::class)
@@ -80,7 +80,7 @@ class VerticleDeployerTest {
   }
 }
 
-  val testModule = Kodein.Module("VertxDeployerTestModule") {
+  val testModule = DI.Module("VertxDeployerTestModule") {
   bind<SimpleVerticle>() with provider { SimpleVerticle() }
   bind<MultipleDeploymentVerticle>() with factory {id: String -> MultipleDeploymentVerticle(id) }
 }

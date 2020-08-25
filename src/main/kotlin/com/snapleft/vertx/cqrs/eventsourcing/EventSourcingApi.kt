@@ -35,7 +35,7 @@ import com.snapleft.vertx.VQuery
 import com.snapleft.vertx.codecs.TypedObjectMapper
 import com.snapleft.vertx.commands.CommandFailedDueToException
 import com.snapleft.vertx.cqrs.database.EventSourcingPool
-import com.snapleft.vertx.kodein.PercentOfMaximumVerticleInstancesToDeploy
+import com.snapleft.vertx.dependencyinjection.PercentOfMaximumVerticleInstancesToDeploy
 import com.snapleft.vertx.sqlclient.batchWithParamsAsync
 import com.snapleft.vertx.sqlclient.queryWithParamsAsync
 import com.snapleft.vertx.sqlclient.updateWithParamsAsync

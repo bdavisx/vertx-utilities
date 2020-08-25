@@ -17,9 +17,9 @@ package com.snapleft.vertx
 
 import com.snapleft.utilities.debugIf
 import com.snapleft.vertx.commands.CommandSender
+import com.snapleft.vertx.dependencyinjection.PercentOfMaximumVerticleInstancesToDeploy
 import com.snapleft.vertx.events.EventPublisher
 import com.snapleft.vertx.events.EventRegistrar
-import com.snapleft.vertx.kodein.PercentOfMaximumVerticleInstancesToDeploy
 import io.vertx.core.http.HttpServer
 import io.vertx.ext.web.Route
 import io.vertx.ext.web.Router

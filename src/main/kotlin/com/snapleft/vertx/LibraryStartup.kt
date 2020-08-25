@@ -20,11 +20,11 @@ import com.snapleft.utilities.debugIf
 import com.snapleft.vertx.codecs.EventBusJacksonJsonCodec
 import com.snapleft.vertx.codecs.PassThroughCodec
 import com.snapleft.vertx.cqrs.eventsourcing.EventSourcingApi
-import com.snapleft.vertx.kodein.DeployVerticleDelegatesCommand
-import com.snapleft.vertx.kodein.DeployVerticleInstancesCommand
-import com.snapleft.vertx.kodein.KodeinVerticleFactoryVerticle
-import com.snapleft.vertx.kodein.VerticleDeployer
-import com.snapleft.vertx.kodein.i
+import com.snapleft.vertx.dependencyinjection.DependencyInjectionVerticleFactoryVerticle
+import com.snapleft.vertx.dependencyinjection.DeployVerticleDelegatesCommand
+import com.snapleft.vertx.dependencyinjection.DeployVerticleInstancesCommand
+import com.snapleft.vertx.dependencyinjection.VerticleDeployer
+import com.snapleft.vertx.dependencyinjection.i
 import io.vertx.core.CompositeFuture
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.CoroutineVerticle
@@ -46,7 +46,7 @@ suspend fun startLibrary(vertx: Vertx, kodein: DirectDI) {
     PassThroughCodec<CodeMessage<*, DirectCallVerticle<*>>>(codecName))
 
   log.debug("Deploying VerticleFactoryVerticle")
-  val factoryVerticle = kodein.instance<KodeinVerticleFactoryVerticle>()
+  val factoryVerticle = kodein.instance<DependencyInjectionVerticleFactoryVerticle>()
   val verticleDeployer = kodein.instance<VerticleDeployer>()
   CompositeFuture.all(
     verticleDeployer.deployVerticles(vertx, listOf(factoryVerticle)).map{it.future()}).await()

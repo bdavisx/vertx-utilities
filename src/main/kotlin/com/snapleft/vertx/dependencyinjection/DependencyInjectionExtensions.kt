@@ -15,17 +15,17 @@
  *
  */
 
-package com.snapleft.vertx.kodein
+package com.snapleft.vertx.dependencyinjection
 
-import org.kodein.di.DKodeinAware
-import org.kodein.di.Kodein
+import org.kodein.di.DI
+import org.kodein.di.DirectDIAware
 import org.kodein.di.direct
 import org.kodein.di.generic
 import org.slf4j.LoggerFactory
 
 /** Mirror of DKodeinAware.instance(tag: Any? = null). */
-inline fun <reified T : Any> DKodeinAware.i(tag: Any? = null) = dkodein.Instance<T>(generic(), tag)
+inline fun <reified T : Any> DirectDIAware.i(tag: Any? = null) = directDI.Instance<T>(generic(), tag)
 
-inline fun <reified T : Any> Kodein.i(tag: Any? = null) = direct.Instance<T>(generic(), tag)
+inline fun <reified T : Any> DI.i(tag: Any? = null) = direct.Instance<T>(generic(), tag)
 
 inline fun <reified T : Any> logger() = LoggerFactory.getLogger(T::class.java)

@@ -15,7 +15,7 @@
  *
  */
 
-package com.snapleft.vertx.kodein
+package com.snapleft.vertx.dependencyinjection
 
 import arrow.core.Either
 import arrow.core.left
@@ -35,7 +35,7 @@ import io.vertx.core.impl.cpu.CpuCoreSensor
 import io.vertx.kotlin.core.json.get
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
-import org.kodein.di.DKodein
+import org.kodein.di.DirectDI
 import org.kodein.di.TT
 import org.slf4j.LoggerFactory
 import kotlin.math.max
@@ -70,16 +70,16 @@ data class VerticleDelegateInstancesDeployedEvent(
 /**
 * We need to create a certain # of verticles that are deployed based on the annotations above.
  */
-class KodeinVerticleFactoryVerticle(
-  private val kodein: DKodein,
+class DependencyInjectionVerticleFactoryVerticle(
+  private val di: DirectDI,
   private val eventPublisher: EventPublisher,
   private val verticleDeployer: VerticleDeployer,
   private val coroutineDelegateVerticleFactory: CoroutineDelegateVerticleFactory
-): DirectCallVerticle<KodeinVerticleFactoryVerticle>(
-    KodeinVerticleFactoryVerticle::class.qualifiedName!!) {
+): DirectCallVerticle<DependencyInjectionVerticleFactoryVerticle>(
+    DependencyInjectionVerticleFactoryVerticle::class.qualifiedName!!) {
 
   companion object {
-    private val log = LoggerFactory.getLogger(KodeinVerticleFactoryVerticle::class.java)
+    private val log = LoggerFactory.getLogger(DependencyInjectionVerticleFactoryVerticle::class.java)
 
     const val numberOfVerticlesKey = "NumberOfVerticlesAt100Percent"
 
@@ -121,7 +121,7 @@ class KodeinVerticleFactoryVerticle(
     val numberOfInstances: Int = determineNumberOfVerticleInstances(verticleClass)
 
     val verticles: List<CoroutineVerticle> = (1..numberOfInstances).map {
-      kodein.AllProviders(TT(verticleClass)).first().invoke() }
+      di.AllProviders(TT(verticleClass)).first().invoke() }
 
     log.debug("Deploying $numberOfInstances instances of ${verticleClass.qualifiedName}")
 
@@ -150,7 +150,7 @@ class KodeinVerticleFactoryVerticle(
 
     val numberOfInstances: Int = determineNumberOfVerticleInstances(delegateClass)
 
-    val delegateProvider = kodein.AllProviders(TT(delegateClass)).firstOrNull()
+    val delegateProvider = di.AllProviders(TT(delegateClass)).firstOrNull()
     if (delegateProvider == null) {
       val message = "Unable to find provider for $delegateClass"
       log.error(message)

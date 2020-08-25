@@ -17,15 +17,15 @@
 package com.snapleft.vertx.cqrs.database
 
 import com.snapleft.utilities.debugIf
-import com.snapleft.vertx.kodein.i
+import com.snapleft.vertx.dependencyinjection.i
 import io.vertx.core.Vertx
 import io.vertx.kotlin.sqlclient.poolOptionsOf
 import io.vertx.pgclient.PgConnectOptions
 import io.vertx.pgclient.PgPool
 import io.vertx.sqlclient.Pool
-import org.kodein.di.Kodein
-import org.kodein.di.generic.bind
-import org.kodein.di.generic.singleton
+import org.kodein.di.DI
+import org.kodein.di.bind
+import org.kodein.di.singleton
 import org.slf4j.LoggerFactory
 
 /*
@@ -41,7 +41,7 @@ class EventSourcingPool(pool: Pool): AbstractPool(pool)
 class AuthenticationPool(pool: Pool): AbstractPool(pool)
 class QueryModelPool(pool: Pool): AbstractPool(pool)
 
-val databaseFactoryModule = Kodein.Module("databaseFactoryModule") {
+val databaseFactoryModule = DI.Module("databaseFactoryModule") {
   val environment: MutableMap<String, String> = System.getenv()
 
   bind<AuthenticationPool>() with singleton {

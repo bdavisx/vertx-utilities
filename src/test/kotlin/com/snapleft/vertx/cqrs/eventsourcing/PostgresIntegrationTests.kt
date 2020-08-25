@@ -30,10 +30,10 @@ import com.snapleft.vertx.CodeMessage
 import com.snapleft.vertx.DirectCallVerticle
 import com.snapleft.vertx.codecs.PassThroughCodec
 import com.snapleft.vertx.commands.CommandFailedDueToException
-import com.snapleft.vertx.kodein.ConfigureMaximumNumberOfVerticleInstancesToDeployCommand
-import com.snapleft.vertx.kodein.DeployVerticleInstancesCommand
-import com.snapleft.vertx.kodein.KodeinVerticleFactoryVerticle
-import com.snapleft.vertx.kodein.VerticleDeployer
+import com.snapleft.vertx.dependencyinjection.ConfigureMaximumNumberOfVerticleInstancesToDeployCommand
+import com.snapleft.vertx.dependencyinjection.DependencyInjectionVerticleFactoryVerticle
+import com.snapleft.vertx.dependencyinjection.DeployVerticleInstancesCommand
+import com.snapleft.vertx.dependencyinjection.VerticleDeployer
 import com.snapleft.vertx.setupVertxKodein
 import io.kotest.assertions.fail
 import io.kotest.matchers.shouldBe
@@ -84,7 +84,7 @@ class PostgresIntegrationTests: AbstractVertxTest() {
         vertx.eventBus().registerCodec(PassThroughCodec<CodeMessage<*, DirectCallVerticle<*>>>(
           CodeMessage::class.qualifiedName!!))
 
-        val factoryVerticle = kodein.instance<KodeinVerticleFactoryVerticle>()
+        val factoryVerticle = kodein.instance<DependencyInjectionVerticleFactoryVerticle>()
         val verticleDeployer = kodein.instance<VerticleDeployer>()
         CompositeFuture.all(
           verticleDeployer.deployVerticles(vertx, listOf(factoryVerticle)).map{it.future()}).await()
@@ -155,7 +155,7 @@ class PostgresIntegrationTests: AbstractVertxTest() {
         vertx.eventBus().registerDefaultCodec(
           Any::class.java, PassThroughCodec<Any>(Any::class.qualifiedName!!))
 
-        val factoryVerticle = kodein.instance<KodeinVerticleFactoryVerticle>()
+        val factoryVerticle = kodein.instance<DependencyInjectionVerticleFactoryVerticle>()
         val verticleDeployer = kodein.instance<VerticleDeployer>()
         CompositeFuture.all(
           verticleDeployer.deployVerticles(vertx, listOf(factoryVerticle)).map{it.future()}).await()
