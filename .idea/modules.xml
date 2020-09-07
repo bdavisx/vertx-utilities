@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/../cannabis-manager-vertx/cannabis-manager.iml" filepath="$PROJECT_DIR$/../cannabis-manager-vertx/cannabis-manager.iml" />
+      <module fileurl="file://$PROJECT_DIR$/../class-manager-vertx/class-manager.iml" filepath="$PROJECT_DIR$/../class-manager-vertx/class-manager.iml" />
       <module fileurl="file://$PROJECT_DIR$/vertx-utilities.iml" filepath="$PROJECT_DIR$/vertx-utilities.iml" />
     </modules>
   </component>

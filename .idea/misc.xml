@@ -74,10 +74,11 @@
       <list>
         <option value="$PROJECT_DIR$/pom.xml" />
         <option value="$PROJECT_DIR$/../cannabis-manager-vertx/pom.xml" />
+        <option value="$PROJECT_DIR$/../class-manager-vertx/pom.xml" />
       </list>
     </option>
   </component>
-  <component name="ProjectRootManager" version="2" languageLevel="JDK_1_8" default="false" project-jdk-name="11.0.4-zulu" project-jdk-type="JavaSDK" />
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_11" default="false" project-jdk-name="11.0.4-zulu" project-jdk-type="JavaSDK" />
   <component name="SbtLocalSettings">
     <option name="modificationStamps">
       <map>
