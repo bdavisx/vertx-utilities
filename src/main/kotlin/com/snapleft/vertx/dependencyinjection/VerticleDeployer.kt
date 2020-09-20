@@ -31,7 +31,7 @@ data class VerticleDeployment(val instance: Verticle, val deploymentId: String)
 class VerticleDeployer {
   private val log: Logger = LoggerFactory.getLogger(VerticleDeployer::class.java)
 
-  var defaultConfig: JsonObject = JsonObject()
+  private val defaultConfig: JsonObject = JsonObject()
 
   fun deployVerticles(vertx: Vertx, verticles: List<Verticle>)
     : List<Promise<VerticleDeployment>> = deployVerticles(vertx, verticles, defaultConfig)
@@ -42,18 +42,18 @@ class VerticleDeployer {
     val deploymentOptions = DeploymentOptions().setWorker(false).setConfig(config)
 
     return verticles.map { verticle ->
-      val deploymentFuture = Promise.promise<VerticleDeployment>()
+      val deploymentPromise = Promise.promise<VerticleDeployment>()
       vertx.deployVerticle(verticle, deploymentOptions) { result ->
         if (result.succeeded()) {
           log.debugIf { "Successful deployment of $verticle" }
-          deploymentFuture.complete(VerticleDeployment(verticle, result.result()))
+          deploymentPromise.complete(VerticleDeployment(verticle, result.result()))
         } else {
           val failureCause = result.cause()
           log.error("Failure deploying verticle ($verticle); cause: $failureCause")
-          deploymentFuture.fail(failureCause)
+          deploymentPromise.fail(failureCause)
         }
       }
-      deploymentFuture
+      deploymentPromise
     }
   }
 }

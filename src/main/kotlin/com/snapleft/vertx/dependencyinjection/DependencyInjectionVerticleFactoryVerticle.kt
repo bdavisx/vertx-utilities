@@ -42,15 +42,6 @@ import kotlin.math.max
 import kotlin.reflect.KClass
 import kotlin.reflect.full.findAnnotation
 
-/** Used to calculate the # of verticles to deploy; default is 1 if this annotation isn't used. */
-@Target(AnnotationTarget.CLASS)
-@MustBeDocumented
-annotation class PercentOfMaximumVerticleInstancesToDeploy(val percent: Short)
-
-@Target(AnnotationTarget.CLASS)
-@MustBeDocumented
-annotation class SpecificNumberOfVerticleInstancesToDeploy(val count: Int)
-
 data class ConfigureMaximumNumberOfVerticleInstancesToDeployCommand(val maximumNumber: Int):
   VCommand
 
@@ -68,7 +59,7 @@ data class VerticleDelegateInstancesDeployedEvent(
   val delegateClass: KClass<*>, val numberOfInstancesDeployed: Int): VEvent
 
 /**
-* We need to create a certain # of verticles that are deployed based on the annotations above.
+ * We need to create a certain # of verticles that are deployed based on the annotations above.
  */
 class DependencyInjectionVerticleFactoryVerticle(
   private val di: DirectDI,
@@ -150,7 +141,7 @@ class DependencyInjectionVerticleFactoryVerticle(
 
     val numberOfInstances: Int = determineNumberOfVerticleInstances(delegateClass)
 
-    val delegateProvider = di.AllProviders(TT(delegateClass)).firstOrNull()
+    val delegateProvider =  di.AllProviders(TT(delegateClass)).firstOrNull()
     if (delegateProvider == null) {
       val message = "Unable to find provider for $delegateClass"
       log.error(message)

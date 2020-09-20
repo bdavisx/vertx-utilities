@@ -25,7 +25,7 @@ import com.snapleft.vertx.RouterVerticle
 import com.snapleft.vertx.codecs.TypedObjectMapper
 import com.snapleft.vertx.commands.CommandRegistrar
 import com.snapleft.vertx.commands.CommandSender
-import com.snapleft.vertx.cqrs.eventsourcing.EventSourcingApi
+import com.snapleft.vertx.cqrs.eventsourcing.EventSourcingApiVerticle
 import com.snapleft.vertx.events.EventPublisher
 import com.snapleft.vertx.events.EventRegistrar
 import io.vertx.core.Vertx
@@ -59,7 +59,7 @@ fun vertxUtilitiesModule(vertx: Vertx) = DI.Module("vertxUtilitiesModule") {
   bind<CoroutineDelegateAutoRegistrar>() with singleton { CoroutineDelegateAutoRegistrar(i(), i(), i(), i()) }
   bind<DependencyInjectionVerticleFactoryVerticle>() with singleton { DependencyInjectionVerticleFactoryVerticle(di.direct, i(), i(), i()) }
 
-  bind<EventSourcingApi>() with provider { EventSourcingApi(i(), i()) }
+  bind<EventSourcingApiVerticle>() with provider { EventSourcingApiVerticle(i(), i()) }
 
   bind<RandomGenerator>() with singleton { RandomGenerator() }
   bind<IdGenerator>() with singleton { i<RandomGenerator>()::generateId }

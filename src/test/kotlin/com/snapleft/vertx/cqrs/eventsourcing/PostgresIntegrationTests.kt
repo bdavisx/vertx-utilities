@@ -53,7 +53,7 @@ import kotlinx.coroutines.launch
 import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.kodein.di.generic.instance
+import org.kodein.type.generic
 import org.slf4j.LoggerFactory
 import java.util.UUID
 import kotlin.reflect.KClass
@@ -66,7 +66,7 @@ data class TestSnapshot(override val aggregateId: AggregateId,
 class PostgresIntegrationTests: AbstractVertxTest() {
   private val log = LoggerFactory.getLogger(PostgresIntegrationTests::class.java)
 
-  val verticlesToDeploy = listOf<KClass<out CoroutineVerticle>>(EventSourcingApi::class)
+  val verticlesToDeploy = listOf<KClass<out CoroutineVerticle>>(EventSourcingApiVerticle::class)
 
   @Test(timeout = 2500)
   @Ignore
@@ -84,8 +84,8 @@ class PostgresIntegrationTests: AbstractVertxTest() {
         vertx.eventBus().registerCodec(PassThroughCodec<CodeMessage<*, DirectCallVerticle<*>>>(
           CodeMessage::class.qualifiedName!!))
 
-        val factoryVerticle = kodein.instance<DependencyInjectionVerticleFactoryVerticle>()
-        val verticleDeployer = kodein.instance<VerticleDeployer>()
+        val factoryVerticle = kodein.Instance<DependencyInjectionVerticleFactoryVerticle>(generic())
+        val verticleDeployer = kodein.Instance<VerticleDeployer>(generic())
         CompositeFuture.all(
           verticleDeployer.deployVerticles(vertx, listOf(factoryVerticle)).map{it.future()}).await()
         log.debug("VerticleFactoryVerticle deployed")
@@ -97,7 +97,7 @@ class PostgresIntegrationTests: AbstractVertxTest() {
           log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
           factoryVerticle.deployVerticleInstances(DeployVerticleInstancesCommand(classToDeploy))
         }
-        val verticle = deployments.first().instance as EventSourcingApi
+        val verticle = deployments.first().instance as EventSourcingApiVerticle
 
         val runtimeInMilliseconds = measureTimeMillis {
           val aggregateId = AggregateId(UUID.randomUUID().toString())
@@ -155,8 +155,8 @@ class PostgresIntegrationTests: AbstractVertxTest() {
         vertx.eventBus().registerDefaultCodec(
           Any::class.java, PassThroughCodec<Any>(Any::class.qualifiedName!!))
 
-        val factoryVerticle = kodein.instance<DependencyInjectionVerticleFactoryVerticle>()
-        val verticleDeployer = kodein.instance<VerticleDeployer>()
+        val factoryVerticle = kodein.Instance<DependencyInjectionVerticleFactoryVerticle>(generic())
+        val verticleDeployer = kodein.Instance<VerticleDeployer>(generic())
         CompositeFuture.all(
           verticleDeployer.deployVerticles(vertx, listOf(factoryVerticle)).map{it.future()}).await()
         log.debug("VerticleFactoryVerticle deployed")
@@ -167,7 +167,7 @@ class PostgresIntegrationTests: AbstractVertxTest() {
           log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
           factoryVerticle.deployVerticleInstances(DeployVerticleInstancesCommand(classToDeploy))
         }
-        val verticle = deployments.first().instance as EventSourcingApi
+        val verticle = deployments.first().instance as EventSourcingApiVerticle
 
         val runtimeInMilliseconds = measureTimeMillis {
           val aggregateId = AggregateId(UUID.randomUUID().toString())

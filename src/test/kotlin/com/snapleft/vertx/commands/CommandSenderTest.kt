@@ -27,7 +27,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.kodein.di.generic.instance
+import org.kodein.type.generic
 
 @RunWith(VertxUnitRunner::class)
 class CommandSenderTest {
@@ -52,7 +52,7 @@ class CommandSenderTest {
     }
 
     val command = TestCommand(1, "bdavisx@yahoo.com")
-    val sender = dKodein.instance<CommandSender>()
+    val sender = dKodein.Instance<CommandSender>(generic())
     val context = vertx.getOrCreateContext()
     sender.send(command)
 

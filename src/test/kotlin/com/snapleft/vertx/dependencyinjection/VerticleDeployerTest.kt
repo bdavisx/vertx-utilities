@@ -17,10 +17,11 @@
 
 package com.snapleft.vertx.dependencyinjection
 
+import com.snapleft.test.utilities.AbstractVertxTest
+import com.snapleft.vertx.DirectCallVerticle
 import com.snapleft.vertx.setupVertxKodein
 import io.kotest.matchers.shouldBe
 import io.vertx.core.Promise
-import io.vertx.core.Vertx
 import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.VertxUnitRunner
 import io.vertx.kotlin.coroutines.CoroutineVerticle
@@ -28,7 +29,6 @@ import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.kodein.di.DI
@@ -38,16 +38,8 @@ import org.kodein.di.provider
 import org.slf4j.LoggerFactory
 
 @RunWith(VertxUnitRunner::class)
-class VerticleDeployerTest {
+class VerticleDeployerTest: AbstractVertxTest() {
   private val log = LoggerFactory.getLogger(VerticleDeployerTest::class.java)
-
-  lateinit var vertx: Vertx
-
-  @Before
-  fun setup(testContext: TestContext) {
-    log.debug("Setting vertx in @before")
-    this.vertx = Vertx.vertx()
-  }
 
   @Test(timeout = 2500)
   fun singleDeployment(context: TestContext) {
@@ -95,12 +87,18 @@ class SimpleVerticle: CoroutineVerticle()
  * one you expect when the code runs.
  */
 @PercentOfMaximumVerticleInstancesToDeploy(50)
-class MultipleDeploymentVerticle(id: String): CoroutineVerticle() {
+class MultipleDeploymentVerticle(id: String)
+  : DirectCallVerticle<MultipleDeploymentVerticle>(id) {
   private val log = LoggerFactory.getLogger(MultipleDeploymentVerticle::class.java)
+
   var counter: Int = 0  // DON'T usually want anything like this in a multi instance verticle
 
+  suspend fun increment() = act {
+    log.debug("Incrementing counter")
+    it.counter++
+  }
+
   override fun toString(): String {
-    return "MultipleDeploymentVerticle(counter=$counter)"
+    return "MultipleDeploymentVerticle(localAddress=$localAddress; counter=$counter)"
   }
 }
-

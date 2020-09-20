@@ -34,7 +34,7 @@ import io.vertx.sqlclient.Tuple
 import org.kodein.di.DI
 import org.kodein.di.DirectDI
 import org.kodein.di.direct
-import org.kodein.di.generic.instance
+import org.kodein.type.generic
 
 data class VertxKodeinTestObjects(val vertx: Vertx, val dkodein: DirectDI)
 
@@ -53,7 +53,7 @@ fun setupVertxKodein(modules: Iterable<DI.Module>, vertx: Vertx, testContext: Te
   modulesWithVertx.addAll(modules)
   val dkodein = DI { modulesWithVertx.forEach { import(it) } }.direct
 
-  vertx.eventBus().registerCodec(EventBusJacksonJsonCodec(dkodein.instance()))
+  vertx.eventBus().registerCodec(EventBusJacksonJsonCodec(dkodein.Instance(generic())))
 
   return VertxKodeinTestObjects(vertx, dkodein)
 }

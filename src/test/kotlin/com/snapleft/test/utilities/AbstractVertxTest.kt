@@ -17,7 +17,6 @@
 package com.snapleft.test.utilities
 
 import com.snapleft.utilities.debugIf
-import io.vertx.core.AsyncResult
 import io.vertx.core.Vertx
 import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.VertxUnitRunner
@@ -26,15 +25,9 @@ import org.junit.Before
 import org.junit.runner.RunWith
 import org.slf4j.LoggerFactory
 
-fun <T> TestContext.assertResultTrue(result: AsyncResult<T>) {
-  if (result.failed()) {
-    this.fail()
-  }
-}
-
 @RunWith(VertxUnitRunner::class)
 abstract class AbstractVertxTest {
-  private val log = LoggerFactory.getLogger(this.javaClass)
+  private val log = LoggerFactory.getLogger(this::class.java)
 
   var vertx: Vertx = Vertx.vertx()
 

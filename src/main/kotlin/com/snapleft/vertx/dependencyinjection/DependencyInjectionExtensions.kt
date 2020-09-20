@@ -20,7 +20,7 @@ package com.snapleft.vertx.dependencyinjection
 import org.kodein.di.DI
 import org.kodein.di.DirectDIAware
 import org.kodein.di.direct
-import org.kodein.di.generic
+import org.kodein.type.generic
 import org.slf4j.LoggerFactory
 
 /** Mirror of DKodeinAware.instance(tag: Any? = null). */

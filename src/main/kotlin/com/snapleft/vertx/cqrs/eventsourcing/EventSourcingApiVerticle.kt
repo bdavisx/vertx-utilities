@@ -59,11 +59,11 @@ data class StoreAggregateSnapshotCommand(
 
 
 @PercentOfMaximumVerticleInstancesToDeploy(100)
-class EventSourcingApi(
+class EventSourcingApiVerticle(
   private val databasePool: EventSourcingPool,
   private val databaseMapper: TypedObjectMapper,
-  private val log: Logger = LoggerFactory.getLogger(EventSourcingApi::class.java)
-): DirectCallVerticle<EventSourcingApi>(EventSourcingApi::class.qualifiedName!!) {
+  private val log: Logger = LoggerFactory.getLogger(EventSourcingApiVerticle::class.java)
+): DirectCallVerticle<EventSourcingApiVerticle>(EventSourcingApiVerticle::class.qualifiedName!!) {
 
   @Language("PostgreSQL")
   private val insertEventsSql = """
