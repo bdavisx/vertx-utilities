@@ -18,8 +18,6 @@
 package com.snapleft.vertx.dependencyinjection
 
 import com.snapleft.utilities.RandomGenerator
-import com.snapleft.vertx.CoroutineDelegateAutoRegistrar
-import com.snapleft.vertx.CoroutineDelegateVerticleFactory
 import com.snapleft.vertx.IdGenerator
 import com.snapleft.vertx.RouterVerticle
 import com.snapleft.vertx.codecs.TypedObjectMapper
@@ -34,7 +32,6 @@ import io.vertx.core.file.FileSystem
 import io.vertx.core.shareddata.SharedData
 import org.kodein.di.DI
 import org.kodein.di.bind
-import org.kodein.di.direct
 import org.kodein.di.provider
 import org.kodein.di.singleton
 
@@ -55,14 +52,12 @@ fun vertxUtilitiesModule(vertx: Vertx) = DI.Module("vertxUtilitiesModule") {
   bind<EventPublisher>() with singleton { EventPublisher(i()) }
   bind<EventRegistrar>() with singleton { EventRegistrar(i(), i()) }
 
-  bind<CoroutineDelegateVerticleFactory>() with singleton { CoroutineDelegateVerticleFactory(i(), i(), i(), i()) }
-  bind<CoroutineDelegateAutoRegistrar>() with singleton { CoroutineDelegateAutoRegistrar(i(), i(), i(), i()) }
-  bind<DependencyInjectionVerticleFactoryVerticle>() with singleton { DependencyInjectionVerticleFactoryVerticle(di.direct, i(), i(), i()) }
-
-  bind<EventSourcingApiVerticle>() with provider { EventSourcingApiVerticle(i(), i()) }
+  bind<EventSourcingApiVerticle>() with provider {
+    v().findOrCreate(EventSourcingApiVerticle::class) {EventSourcingApiVerticle(i(), i()) }}
 
   bind<RandomGenerator>() with singleton { RandomGenerator() }
   bind<IdGenerator>() with singleton { i<RandomGenerator>()::generateId }
 
-  bind<RouterVerticle>() with provider { RouterVerticle(i(), i(), i()) }
+  bind<RouterVerticle>() with provider {
+    v().findOrCreate(RouterVerticle::class) {RouterVerticle(i(), i(), i()) }}
 }

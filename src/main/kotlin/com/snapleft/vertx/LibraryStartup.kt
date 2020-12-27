@@ -20,17 +20,11 @@ import com.snapleft.utilities.debugIf
 import com.snapleft.vertx.codecs.EventBusJacksonJsonCodec
 import com.snapleft.vertx.codecs.PassThroughCodec
 import com.snapleft.vertx.cqrs.eventsourcing.EventSourcingApiVerticle
-import com.snapleft.vertx.dependencyinjection.DependencyInjectionVerticleFactoryVerticle
-import com.snapleft.vertx.dependencyinjection.DeployVerticleDelegatesCommand
-import com.snapleft.vertx.dependencyinjection.DeployVerticleInstancesCommand
-import com.snapleft.vertx.dependencyinjection.VerticleDeployer
 import com.snapleft.vertx.dependencyinjection.i
-import io.vertx.core.CompositeFuture
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.kotlin.coroutines.await
 import org.kodein.di.DirectDI
-import org.kodein.type.generic
+import org.kodein.di.TT
 import org.slf4j.LoggerFactory
 import kotlin.reflect.KClass
 
@@ -46,11 +40,6 @@ suspend fun startLibrary(vertx: Vertx, kodein: DirectDI) {
     PassThroughCodec<CodeMessage<*, DirectCallVerticle<*>>>(codecName))
 
   log.debug("Deploying VerticleFactoryVerticle")
-  val factoryVerticle: DependencyInjectionVerticleFactoryVerticle = kodein.Instance(generic())
-  val verticleDeployer = kodein.Instance<VerticleDeployer>(generic())
-  CompositeFuture.all(
-    verticleDeployer.deployVerticles(vertx, listOf(factoryVerticle)).map{it.future()}).await()
-  log.debug("VerticleFactoryVerticle deployed")
 
   val startupVerticlesLists =
     listOf (
@@ -66,16 +55,7 @@ suspend fun startLibrary(vertx: Vertx, kodein: DirectDI) {
       log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
       // TODO: what if this returns a failure, need to test the handling verticle to see what
       //  happens with a failure
-      factoryVerticle.deployVerticleInstances(DeployVerticleInstancesCommand(classToDeploy))
+      kodein.directDI.Instance(TT(classToDeploy))
     }
-  }
-
-  val startupDelegates: List<KClass<out CoroutineDelegate>> = listOf()
-
-  startupDelegates.forEach { classToDeploy ->
-    log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
-    // TODO: what if this returns a failure, need to test the handling verticle to see what
-    //  happens with a failure
-    factoryVerticle.deployVerticleDelegates(DeployVerticleDelegatesCommand(classToDeploy))
   }
 }

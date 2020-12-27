@@ -6,6 +6,7 @@ import io.kotest.matchers.shouldBe
 import io.vertx.core.CompositeFuture
 import io.vertx.core.Context
 import io.vertx.core.DeploymentOptions
+import io.vertx.core.Handler
 import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.ext.unit.TestContext
@@ -56,7 +57,10 @@ class TestDirectCallVerticle(id: String): DirectCallVerticle<TestDirectCallVerti
   }
 
   private fun logContext(prefix: String, context: Context) {
-    log.debug("$prefix - Context deploymentId: ${context.deploymentID()}")
+    vertx.executeBlocking<Unit>({
+      log.debug("$prefix - Context deploymentId: ${context.deploymentID()}")
+      it.complete()
+    }, true)
   }
 
   private suspend fun delay() {
@@ -131,7 +135,7 @@ class DirectCallVerticleTest {
           val deploymentOptions = DeploymentOptions()
 
           val id = UUID.randomUUID().toString()
-          val verticlesRange = 0..20
+          val verticlesRange = 0..3
           val verticles = verticlesRange.map { TestDirectCallVerticle(id) }
           val futures = verticles.map { vertx.deployVerticle(it, deploymentOptions) }
           CompositeFuture.all(futures).await()

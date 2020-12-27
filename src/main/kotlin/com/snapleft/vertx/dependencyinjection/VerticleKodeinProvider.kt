@@ -4,6 +4,7 @@ import com.snapleft.utilities.debugIf
 import io.vertx.core.CompositeFuture
 import io.vertx.core.Verticle
 import io.vertx.core.Vertx
+import io.vertx.kotlin.coroutines.await
 import kotlinx.coroutines.runBlocking
 import org.kodein.di.DirectDIAware
 import org.kodein.di.TT
@@ -49,7 +50,7 @@ class VerticleKodeinProvider(
     verticleClassToVerticles[verticleClass]!!.first()
 
   // TODO: should this be "synchronized" or is that handled by Kodein?
-  fun <T: Verticle> createOrFind(verticleClass: KClass<T>, factory: () -> T): T {
+  fun <T: Verticle> findOrCreate(verticleClass: KClass<T>, factory: () -> T): T {
     if (containsVerticleClass(verticleClass)) { return verticleForClass(verticleClass) as T }
 
     log.debugIf { "Attempting to create the verticle class: ${verticleClass.qualifiedName}" }
@@ -60,7 +61,11 @@ class VerticleKodeinProvider(
 
     val deployments = verticleDeployer.deployVerticles(vertx, verticles)
     // TODO: this may cause issues since it could run on the eventLoop
-    runBlocking { CompositeFuture.all(deployments.map { it.future() }) }
+    val allDeploymentsFuture =
+      runBlocking { CompositeFuture.all(deployments.map { it.future() }).await() }
+
+    // TODO: wtf we gonna do if there's an error on the deployment? That's got to be signalled
+    //       somewhere
 
     verticleClassToVerticles[verticleClass] = verticles
     return verticles.first()
