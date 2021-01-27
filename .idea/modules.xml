@@ -3,7 +3,6 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/../class-manager-vertx/class-manager.iml" filepath="$PROJECT_DIR$/../class-manager-vertx/class-manager.iml" />
-      <module fileurl="file://$PROJECT_DIR$/vertx-utilities.iml" filepath="$PROJECT_DIR$/vertx-utilities.iml" />
     </modules>
   </component>
 </project>

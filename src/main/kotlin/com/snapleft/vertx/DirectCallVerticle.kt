@@ -8,7 +8,7 @@ import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.launch
 
 sealed class CodeMessage<T: Any, Subtype: DirectCallVerticle<*>>(val block: suspend (Subtype) -> T)
-class ReturnValueCodeMessage<T: Any, Subtype: DirectCallVerticle<*>>(block: suspend (Subtype) -> T):CodeMessage<T, Subtype>(block)
+class ReturnValueCodeMessage<T: Any, Subtype: DirectCallVerticle<*>>(block: suspend (Subtype) -> T): CodeMessage<T, Subtype>(block)
 class UnitCodeMessage<Subtype: DirectCallVerticle<*>>(block: suspend (Subtype) -> Unit): CodeMessage<Unit, Subtype>(block)
 class FireAndForgetCodeMessage<Subtype: DirectCallVerticle<*>>(block: suspend (Subtype) -> Unit): CodeMessage<Unit, Subtype>(block)
 
@@ -28,8 +28,9 @@ open class DirectCallVerticle<Subtype: DirectCallVerticle<Subtype>>(val localAdd
 
   override suspend fun start() {
     super.start()
-    vertx.eventBus().localConsumer<CodeMessage<*, Subtype>>(localAddress,
-      { launch(vertx.dispatcher()) { runCode(it) } })
+    vertx.eventBus().localConsumer<CodeMessage<*, Subtype>>(localAddress) {
+      launch(vertx.dispatcher()) { runCode(it) }
+    }
   }
 
   /**

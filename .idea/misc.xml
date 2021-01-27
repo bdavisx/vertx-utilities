@@ -72,13 +72,11 @@
   <component name="MavenProjectsManager">
     <option name="originalFiles">
       <list>
-        <option value="$PROJECT_DIR$/pom.xml" />
-        <option value="$PROJECT_DIR$/../cannabis-manager-vertx/pom.xml" />
         <option value="$PROJECT_DIR$/../class-manager-vertx/pom.xml" />
       </list>
     </option>
   </component>
-  <component name="ProjectRootManager" version="2" languageLevel="JDK_11" default="false" project-jdk-name="11.0.4-zulu" project-jdk-type="JavaSDK" />
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_11" project-jdk-name="11.0.4-zulu" project-jdk-type="JavaSDK" />
   <component name="SbtLocalSettings">
     <option name="modificationStamps">
       <map>
@@ -103,5 +101,8 @@
   </component>
   <component name="ScalaSbtSettings">
     <option name="customVMPath" />
+  </component>
+  <component name="SuppressKotlinCodeStyleNotification">
+    <option name="disableForAll" value="true" />
   </component>
 </project>
