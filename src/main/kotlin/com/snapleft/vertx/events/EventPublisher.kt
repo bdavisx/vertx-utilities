@@ -17,16 +17,14 @@
 
 package com.snapleft.vertx.events
 
-import com.snapleft.vertx.OpenForTesting
-import com.snapleft.vertx.codecs.EventBusJacksonJsonCodec
+import com.snapleft.vertx.codecs.PassThroughCodec
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.EventBus
 
-/** This publishes events in the "standard" way we are doing it for the game engine. */
-@OpenForTesting
+/** This publishes events in the "standard" way we are doing it for the library. */
 class EventPublisher(val eventBus: EventBus) {
   val deliveryOptions = DeliveryOptions()
-    .setCodecName(EventBusJacksonJsonCodec.codecName)
+    .setCodecName(PassThroughCodec.codecName)
     .setSendTimeout(5000)
 
   fun publish(event: Any) {

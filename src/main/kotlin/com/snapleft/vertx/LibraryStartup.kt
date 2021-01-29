@@ -17,10 +17,8 @@
 package com.snapleft.vertx
 
 import com.snapleft.utilities.debugIf
-import com.snapleft.vertx.codecs.EventBusJacksonJsonCodec
 import com.snapleft.vertx.codecs.PassThroughCodec
 import com.snapleft.vertx.cqrs.eventsourcing.EventSourcingApiVerticle
-import com.snapleft.vertx.dependencyinjection.i
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import org.kodein.di.DirectDI
@@ -31,13 +29,7 @@ import kotlin.reflect.KClass
 private val log = LoggerFactory.getLogger(VSerializable::class.java)
 
 suspend fun startLibrary(vertx: Vertx, kodein: DirectDI) {
-  log.debug("Registering the EventBusJacksonJsonCodec codec")
-  vertx.eventBus().registerCodec(EventBusJacksonJsonCodec(kodein.i()))
-
-  val codecName = CodeMessage::class.qualifiedName!!
-  log.debug("Registering the $codecName codec")
-  vertx.eventBus().registerCodec(
-    PassThroughCodec<CodeMessage<*, DirectCallVerticle<*>>>(codecName))
+  vertx.eventBus().registerCodec(PassThroughCodec())
 
   log.debug("Deploying VerticleFactoryVerticle")
 

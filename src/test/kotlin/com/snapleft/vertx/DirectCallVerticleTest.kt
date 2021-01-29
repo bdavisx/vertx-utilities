@@ -6,7 +6,6 @@ import io.kotest.matchers.shouldBe
 import io.vertx.core.CompositeFuture
 import io.vertx.core.Context
 import io.vertx.core.DeploymentOptions
-import io.vertx.core.Handler
 import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.ext.unit.TestContext
@@ -94,8 +93,7 @@ class DirectCallVerticleTest {
     vertx.runOnContext {
       GlobalScope.launch(vertx.dispatcher()) {
         try {
-          vertx.eventBus().registerCodec(
-            PassThroughCodec<CodeMessage<*, DirectCallVerticle<*>>>(CodeMessage::class.qualifiedName!!))
+          vertx.eventBus().registerCodec(PassThroughCodec())
 
           val deploymentOptions = DeploymentOptions()
 
@@ -129,8 +127,7 @@ class DirectCallVerticleTest {
     vertx.runOnContext {
       GlobalScope.launch(vertx.dispatcher()) {
         try {
-          vertx.eventBus().registerCodec(
-            PassThroughCodec<CodeMessage<*, DirectCallVerticle<*>>>(CodeMessage::class.qualifiedName!!))
+          vertx.eventBus().registerCodec(PassThroughCodec())
 
           val deploymentOptions = DeploymentOptions()
 

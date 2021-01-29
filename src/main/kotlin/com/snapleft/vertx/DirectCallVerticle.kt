@@ -1,5 +1,6 @@
 package com.snapleft.vertx
 
+import com.snapleft.vertx.codecs.PassThroughCodec
 import io.vertx.core.eventbus.DeliveryOptions
 import io.vertx.core.eventbus.Message
 import io.vertx.kotlin.coroutines.CoroutineVerticle
@@ -20,7 +21,7 @@ open class DirectCallVerticle<Subtype: DirectCallVerticle<Subtype>>(val localAdd
 
   companion object {
     val codeDeliveryOptions = DeliveryOptions()
-    init { codeDeliveryOptions.codecName = CodeMessage::class.qualifiedName }
+    init { codeDeliveryOptions.codecName = PassThroughCodec.codecName }
 
     fun isDirectCallVerticle(jvmType: Class<*>) =
       DirectCallVerticle::class.java.isAssignableFrom(jvmType)

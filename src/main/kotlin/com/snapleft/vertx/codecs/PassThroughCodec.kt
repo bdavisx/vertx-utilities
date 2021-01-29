@@ -20,21 +20,23 @@ package com.snapleft.vertx.codecs
 import io.vertx.core.buffer.Buffer
 import io.vertx.core.eventbus.MessageCodec
 
-class PassThroughCodec<T>(val name: String): MessageCodec<T, T> {
+class PassThroughCodec: MessageCodec<Any, Any> {
   companion object {
+    val codecName = PassThroughCodec::class.qualifiedName!!
+
     const val errorMessage = "Can't send code across the wire!"
   }
 
-  override fun transform(s: T): T = s
+  override fun transform(s: Any): Any = s
 
   override fun systemCodecID(): Byte = -1
-  override fun name(): String = name
+  override fun name(): String = codecName
 
-  override fun encodeToWire(buffer: Buffer?, s: T?) {
+  override fun encodeToWire(buffer: Buffer?, s: Any?) {
     throw UnsupportedOperationException(
       errorMessage)
   }
-  override fun decodeFromWire(pos: Int, buffer: Buffer?): T {
+  override fun decodeFromWire(pos: Int, buffer: Buffer?): Any {
     throw UnsupportedOperationException(
       errorMessage)
   }

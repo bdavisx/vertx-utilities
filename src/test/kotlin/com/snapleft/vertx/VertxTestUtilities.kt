@@ -17,7 +17,7 @@
 
 package com.snapleft.vertx
 
-import com.snapleft.vertx.codecs.EventBusJacksonJsonCodec
+import com.snapleft.vertx.codecs.PassThroughCodec
 import com.snapleft.vertx.commands.CommandRegistrar
 import com.snapleft.vertx.commands.CommandSender
 import com.snapleft.vertx.cqrs.database.databaseFactoryModule
@@ -34,7 +34,6 @@ import io.vertx.sqlclient.Tuple
 import org.kodein.di.DI
 import org.kodein.di.DirectDI
 import org.kodein.di.direct
-import org.kodein.type.generic
 
 data class VertxKodeinTestObjects(val vertx: Vertx, val dkodein: DirectDI)
 
@@ -53,7 +52,7 @@ fun setupVertxKodein(modules: Iterable<DI.Module>, vertx: Vertx, testContext: Te
   modulesWithVertx.addAll(modules)
   val dkodein = DI { modulesWithVertx.forEach { import(it) } }.direct
 
-  vertx.eventBus().registerCodec(EventBusJacksonJsonCodec(dkodein.Instance(generic())))
+  vertx.eventBus().registerCodec(PassThroughCodec())
 
   return VertxKodeinTestObjects(vertx, dkodein)
 }

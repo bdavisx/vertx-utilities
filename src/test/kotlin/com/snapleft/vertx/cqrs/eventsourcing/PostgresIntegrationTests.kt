@@ -21,27 +21,21 @@ import arrow.core.Option
 import arrow.core.getOrElse
 import com.snapleft.test.utilities.AbstractVertxTest
 import com.snapleft.test.utilities.runUpdateSql
-import com.snapleft.utilities.debugIf
 import com.snapleft.vertx.AggregateEvent
 import com.snapleft.vertx.AggregateId
 import com.snapleft.vertx.AggregateSnapshot
 import com.snapleft.vertx.AggregateVersion
-import com.snapleft.vertx.CodeMessage
-import com.snapleft.vertx.DirectCallVerticle
 import com.snapleft.vertx.codecs.PassThroughCodec
 import com.snapleft.vertx.commands.CommandFailedDueToException
-import com.snapleft.vertx.dependencyinjection.VerticleDeployer
 import com.snapleft.vertx.setupVertxKodein
 import io.kotest.assertions.fail
 import io.kotest.matchers.shouldBe
 import io.vertx.config.ConfigRetriever
-import io.vertx.core.CompositeFuture
 import io.vertx.core.DeploymentOptions
 import io.vertx.core.json.JsonObject
 import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.VertxUnitRunner
 import io.vertx.kotlin.coroutines.CoroutineVerticle
-import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitResult
 import io.vertx.kotlin.coroutines.dispatcher
 import io.vertx.sqlclient.Tuple
@@ -50,9 +44,7 @@ import kotlinx.coroutines.launch
 import org.junit.Ignore
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.kodein.di.TT
 import org.kodein.di.instance
-import org.kodein.type.generic
 import org.slf4j.LoggerFactory
 import java.util.UUID
 import kotlin.reflect.KClass
@@ -80,8 +72,7 @@ class PostgresIntegrationTests: AbstractVertxTest() {
         val deploymentOptions = DeploymentOptions()
         deploymentOptions.config = configuration
 
-        vertx.eventBus().registerCodec(PassThroughCodec<CodeMessage<*, DirectCallVerticle<*>>>(
-          CodeMessage::class.qualifiedName!!))
+        vertx.eventBus().registerCodec(PassThroughCodec())
 
         val verticle = kodein.instance<EventSourcingApiVerticle>()
 
@@ -135,11 +126,9 @@ class PostgresIntegrationTests: AbstractVertxTest() {
         val deploymentOptions = DeploymentOptions()
         deploymentOptions.config = configuration
 
-        vertx.eventBus().registerCodec(
-          PassThroughCodec<CodeMessage<*, DirectCallVerticle<*>>>(CodeMessage::class.qualifiedName!!))
-
-        vertx.eventBus().registerDefaultCodec(
-          Any::class.java, PassThroughCodec<Any>(Any::class.qualifiedName!!))
+        val passThroughCodec = PassThroughCodec()
+        vertx.eventBus().registerCodec(passThroughCodec)
+        vertx.eventBus().registerDefaultCodec(Any::class.java, passThroughCodec)
 
         val verticle = kodein.instance<EventSourcingApiVerticle>()
 

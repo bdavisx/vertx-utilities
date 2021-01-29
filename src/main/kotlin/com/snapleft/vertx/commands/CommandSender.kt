@@ -21,7 +21,7 @@ import arrow.core.Either
 import com.snapleft.utilities.debugIf
 import com.snapleft.vertx.OpenForTesting
 import com.snapleft.vertx.VSerializable
-import com.snapleft.vertx.codecs.EventBusJacksonJsonCodec
+import com.snapleft.vertx.codecs.PassThroughCodec
 import io.vertx.core.AsyncResult
 import io.vertx.core.Handler
 import io.vertx.core.eventbus.DeliveryOptions
@@ -44,7 +44,7 @@ class CommandSender(val eventBus: EventBus) {
   private val log = LoggerFactory.getLogger(CommandSender::class.java)
 
   val deliveryOptions = DeliveryOptions()
-    .setCodecName(EventBusJacksonJsonCodec.codecName)
+    .setCodecName(PassThroughCodec.codecName)
     .setSendTimeout(5000)
 
   fun send(command: Any) {
