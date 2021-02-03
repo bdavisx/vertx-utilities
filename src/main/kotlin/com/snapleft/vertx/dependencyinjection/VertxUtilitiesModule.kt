@@ -60,4 +60,8 @@ fun vertxUtilitiesModule(vertx: Vertx) = DI.Module("vertxUtilitiesModule") {
 
   bind<RouterVerticle>() with provider {
     v().findOrCreate(RouterVerticle::class) {RouterVerticle(i(), i(), i()) }}
+
+  // TODO: the 8 here is the Max # of verticles instances to deploy, so it needs to be a config
+  //  value
+  bind<VerticleKodeinProvider>() with singleton { VerticleKodeinProvider(i(), i(),8) }
 }

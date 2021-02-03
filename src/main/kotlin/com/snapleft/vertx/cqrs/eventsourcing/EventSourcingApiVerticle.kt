@@ -17,10 +17,8 @@
 package com.snapleft.vertx.cqrs.eventsourcing
 
 import arrow.core.Either
-import arrow.core.Option
 import arrow.core.left
 import arrow.core.right
-import arrow.core.toOption
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.snapleft.utilities.debugIf
 import com.snapleft.vertx.AggregateEvent
@@ -177,7 +175,9 @@ class EventSourcingApiVerticle(
       order by version_number desc
       limit 1""".trimIndent()
 
-  suspend fun loadLatestAggregateSnapshot(query: LatestAggregateSnapshotQuery) = actAndReply {
+  suspend fun loadLatestAggregateSnapshot(query: LatestAggregateSnapshotQuery)
+    : Either<CommandFailedDueToException, AggregateSnapshot?> = actAndReply {
+
     var connection: SqlConnection? = null
     try {
       // TODO: error handling
@@ -187,8 +187,8 @@ class EventSourcingApiVerticle(
       log.debugIf { "Running snapshot load sql: '$selectSnapshotSql' with parameters: $parameters" }
       val snapshotResultSet = connection.queryWithParamsAsync(selectSnapshotSql, parameters)
 
-      val possibleSnapshot: Option<AggregateSnapshot> = snapshotResultSet.map {
-        databaseMapper.readValue<AggregateSnapshot>(it.getString(0)) }.firstOrNull().toOption()
+      val possibleSnapshot: AggregateSnapshot? = snapshotResultSet.map {
+        databaseMapper.readValue<AggregateSnapshot>(it.getString(0)) }.firstOrNull()
       possibleSnapshot.right()
     } catch (ex: Exception) {
       log.warn("Exception while trying to load Aggregate Snapshot", ex)

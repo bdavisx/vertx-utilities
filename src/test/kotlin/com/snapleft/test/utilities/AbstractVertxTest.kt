@@ -18,30 +18,23 @@ package com.snapleft.test.utilities
 
 import com.snapleft.utilities.debugIf
 import io.vertx.core.Vertx
-import io.vertx.ext.unit.TestContext
-import io.vertx.ext.unit.junit.VertxUnitRunner
-import org.junit.After
-import org.junit.Before
-import org.junit.runner.RunWith
+import io.vertx.junit5.VertxTestContext
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.slf4j.LoggerFactory
 
-@RunWith(VertxUnitRunner::class)
 abstract class AbstractVertxTest {
   private val log = LoggerFactory.getLogger(this::class.java)
 
   var vertx: Vertx = Vertx.vertx()
 
-  @Before
-  fun beforeEach(context: TestContext) {
+  @BeforeEach
+  fun beforeEach(vertx: Vertx, context: VertxTestContext) {
     log.debugIf {"Running test for ${this::class.qualifiedName}"}
-
-    vertx = Vertx.vertx()
-    vertx.exceptionHandler(context.exceptionHandler())
-
   }
 
-  @After
-  fun afterEach(context: TestContext) {
-    vertx.close(context.asyncAssertSuccess())
+  @AfterEach
+  fun afterEach(vertx: Vertx, context: VertxTestContext) {
+    vertx.close(context.succeedingThenComplete())
   }
 }

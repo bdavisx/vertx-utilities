@@ -29,7 +29,7 @@ import com.snapleft.vertx.events.EventRegistrar
 import io.kotest.matchers.shouldBe
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.EventBus
-import io.vertx.ext.unit.TestContext
+import io.vertx.junit5.VertxTestContext
 import io.vertx.sqlclient.Tuple
 import org.kodein.di.DI
 import org.kodein.di.DirectDI
@@ -41,10 +41,8 @@ fun testModule() = DI.Module("testModule") {
 }
 
 
-fun setupVertxKodein(modules: Iterable<DI.Module>, vertx: Vertx, testContext: TestContext)
+fun setupVertxKodein(modules: Iterable<DI.Module>, vertx: Vertx)
   : VertxKodeinTestObjects {
-
-  vertx.exceptionHandler(testContext.exceptionHandler())
 
   val modulesWithVertx =
     mutableListOf(vertxUtilitiesModule(vertx), databaseFactoryModule, testModule())
@@ -68,12 +66,10 @@ data class TestVertxObjects(
   val eventBus: EventBus
 )
 
-fun createTestVertxObjects(modules: Iterable<DI.Module>, vertx: Vertx, testContext: TestContext)
+fun createTestVertxObjects(modules: Iterable<DI.Module>, vertx: Vertx, testContext: VertxTestContext)
   : TestVertxObjects {
 
-  val (_, kodein) = setupVertxKodein(modules, vertx, testContext)
-
-  vertx.exceptionHandler(testContext.exceptionHandler())
+  val (_, kodein) = setupVertxKodein(modules, vertx)
 
   return TestVertxObjects(vertx, kodein, kodein.i(), kodein.i(), kodein.i(), kodein.i(),
     kodein.i(), kodein.i())

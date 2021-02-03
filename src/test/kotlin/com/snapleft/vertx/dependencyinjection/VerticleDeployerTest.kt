@@ -22,34 +22,31 @@ import com.snapleft.vertx.DirectCallVerticle
 import com.snapleft.vertx.setupVertxKodein
 import io.kotest.matchers.shouldBe
 import io.vertx.core.Promise
-import io.vertx.ext.unit.TestContext
-import io.vertx.ext.unit.junit.VertxUnitRunner
+import io.vertx.junit5.VertxTestContext
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.dispatcher
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.junit.Test
-import org.junit.runner.RunWith
+import org.junit.jupiter.api.fail
 import org.kodein.di.DI
 import org.kodein.di.bind
 import org.kodein.di.factory
 import org.kodein.di.provider
 import org.slf4j.LoggerFactory
 
-@RunWith(VertxUnitRunner::class)
 class VerticleDeployerTest: AbstractVertxTest() {
   private val log = LoggerFactory.getLogger(VerticleDeployerTest::class.java)
 
   @Test(timeout = 2500)
-  fun singleDeployment(context: TestContext) {
+  fun singleDeployment() {
+    val context = VertxTestContext()
     log.debug("running singleDeployment")
-    val async = context.async()
-    vertx.exceptionHandler(context.exceptionHandler())
 
     vertx.runOnContext { GlobalScope.launch(vertx.dispatcher()) {
       try {
-        val (vertx, kodein) = setupVertxKodein(listOf(testModule), vertx, context)
+        val (vertx, kodein) = setupVertxKodein(listOf(testModule), vertx)
 
         val deployer: VerticleDeployer = kodein.i()
 
@@ -64,9 +61,9 @@ class VerticleDeployerTest: AbstractVertxTest() {
         deployment.deploymentId.isBlank() shouldBe false
         log.debug(deployment.toString())
 
-        async.complete()
+        context.completeNow()
       } catch(ex: Throwable) {
-        context.fail(ex)
+        fail(ex)
       }
     }}
   }

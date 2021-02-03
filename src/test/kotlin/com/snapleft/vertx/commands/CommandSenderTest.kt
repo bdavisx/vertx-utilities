@@ -20,31 +20,23 @@ package com.snapleft.vertx.commands
 import com.natpryce.hamkrest.equalTo
 import com.snapleft.vertx.VCommand
 import com.snapleft.vertx.setupVertxKodein
-import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.RunTestOnContext
-import io.vertx.ext.unit.junit.VertxUnitRunner
-import org.junit.Before
+import io.vertx.junit5.VertxExtension
+import io.vertx.junit5.VertxTestContext
 import org.junit.Rule
 import org.junit.Test
-import org.junit.runner.RunWith
+import org.junit.jupiter.api.extension.ExtendWith
 import org.kodein.type.generic
 
-@RunWith(VertxUnitRunner::class)
+@ExtendWith(VertxExtension::class)
 class CommandSenderTest {
   @get:Rule
   var rule = RunTestOnContext()
 
-  @Before
-  fun setup(testContext: TestContext) {
-  }
-
   @Test
-  fun testItShouldSendACommandCorrectly(testContext: TestContext) {
-    val (vertx, dKodein) = setupVertxKodein(listOf(), rule.vertx(), testContext)
-
-    val async = testContext.async()
-
-    vertx.exceptionHandler(testContext.exceptionHandler())
+  fun testItShouldSendACommandCorrectly() {
+    val testContext = VertxTestContext()
+    val (vertx, dKodein) = setupVertxKodein(listOf(), rule.vertx())
 
     var receivedCommand: TestCommand? = null
     vertx.eventBus().consumer<TestCommand>(
@@ -58,7 +50,7 @@ class CommandSenderTest {
 
     context.runOnContext {
       com.natpryce.hamkrest.assertion.assertThat(receivedCommand, equalTo(command))
-      async.complete()
+      testContext.completeNow()
     }
   }
 }
