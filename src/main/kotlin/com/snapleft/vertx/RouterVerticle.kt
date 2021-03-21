@@ -16,28 +16,34 @@
 package com.snapleft.vertx
 
 import com.snapleft.utilities.debugIf
-import com.snapleft.vertx.commands.CommandSender
 import com.snapleft.vertx.dependencyinjection.PercentOfMaximumVerticleInstancesToDeploy
 import com.snapleft.vertx.events.EventPublisher
 import com.snapleft.vertx.events.EventRegistrar
+import io.vertx.core.http.HttpMethod
 import io.vertx.core.http.HttpServer
 import io.vertx.ext.web.Route
 import io.vertx.ext.web.Router
 import io.vertx.ext.web.RoutingContext
+import io.vertx.kotlin.coroutines.CoroutineVerticle
+import io.vertx.kotlin.coroutines.await
+import io.vertx.kotlin.coroutines.dispatcher
+import kotlinx.coroutines.launch
 import org.slf4j.LoggerFactory
 
-/** An address will be registered that takes a RoutingContext message and can do whatever with it. */
-data class AddRouteCommand(val handlerAddress: String, val route: String): VCommand
-data class HandleSubrouterCallCommand(val routingContext: RoutingContext): VCommand
-data class SubrouterAdded(val handlerAddress: String, val path: String): VEvent
+data class SubrouterAdded(val route: String, val handler: RouteHandler): VEvent
+data class SubrouterAddedForMethods(
+  val route: String, val methods: List<HttpMethod>, val handler: RouteHandler): VEvent
+
+typealias RouteHandler = suspend (RoutingContext) -> Unit
 
 @PercentOfMaximumVerticleInstancesToDeploy(100)
 class RouterVerticle(
-  private val commandSender: CommandSender,
   private val eventPublisher: EventPublisher,
-  private val eventRegistrar: EventRegistrar
-): DirectCallVerticle<RouterVerticle>(RouterVerticle::class.qualifiedName!!) {
+  private val eventRegistrar: EventRegistrar,
+  private val directCallDelegate: DirectCallDelegate
+): CoroutineVerticle() {
   private val log = LoggerFactory.getLogger(RouterVerticle::class.java)
+  private val thisAddress = RouterVerticle::class.qualifiedName!!
 
   private lateinit var mainRouter: Router
   private lateinit var server: HttpServer
@@ -45,25 +51,46 @@ class RouterVerticle(
   override suspend fun start() {
     super.start()
 
-    eventRegistrar.registerEventHandler(SubrouterAdded::class, ::subrouterAdded)
+    directCallDelegate.registerAddress(thisAddress, this)
+
+    eventRegistrar.registerEventHandlerSuspendable(this, SubrouterAdded::class, ::subrouterAdded)
+    eventRegistrar.registerEventHandlerSuspendable(this, SubrouterAddedForMethods::class,
+      ::subrouterAddedForMethods)
 
     server = vertx.createHttpServer()
     mainRouter = Router.router(vertx)
     // TODO: parameterize the port
-    server.requestHandler(mainRouter).listen(8080)
+    server.requestHandler(mainRouter).listen(8080).await()
   }
 
-  suspend fun addRoute(command: AddRouteCommand) = fireAndForget {
-    val (handlerAddress, route) = command
-    log.debugIf {"adding route: address: $handlerAddress; route: $route"}
-    eventPublisher.publish(SubrouterAdded(handlerAddress, route))
+  fun addRoute(route: String, handler: RouteHandler) = directCallDelegate.fireAndForget {
+    log.debugIf {"adding route: handler: $handler; route: $route"}
+    eventPublisher.publish(SubrouterAdded(route, handler))
   }
 
-  private fun subrouterAdded(event: SubrouterAdded) {
+  fun addRoute(route: String, method: HttpMethod, handler: RouteHandler) = directCallDelegate.fireAndForget {
+    log.debugIf {"adding route: handler: $handler; route: $route; method: $method"}
+    eventPublisher.publish(SubrouterAddedForMethods(route, listOf(method), handler))
+  }
+
+  fun addRoute(route: String, methods: List<HttpMethod>, handler: RouteHandler) = directCallDelegate.fireAndForget {
+    log.debugIf {"adding route: handler: $handler; route: $route; ${methods.joinToString()}"}
+    eventPublisher.publish(SubrouterAddedForMethods(route, methods, handler))
+  }
+
+  private suspend fun subrouterAdded(event: SubrouterAdded) {
     log.debugIf {"SubrouterAdded event received - $event"}
-    val route: Route = mainRouter.route().path(event.path)
+    val route: Route = mainRouter.route(event.route)
     route.handler { routingContext ->
-      commandSender.send(event.handlerAddress, HandleSubrouterCallCommand(routingContext))
-    }
+      launch(vertx.dispatcher()) { event.handler(routingContext) }}
+  }
+
+  private suspend fun subrouterAddedForMethods(event: SubrouterAddedForMethods) {
+    log.debugIf {"SubrouterAdded event received - $event"}
+    val route: Route = mainRouter.route(event.route)
+    event.methods.forEach {route.method(it)}
+
+    route.handler { routingContext ->
+      launch(vertx.dispatcher()) { event.handler(routingContext) }}
   }
 }

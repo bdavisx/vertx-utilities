@@ -2,6 +2,7 @@ package com.snapleft.vertx.dependencyinjection
 
 import com.snapleft.utilities.debugIf
 import io.vertx.core.CompositeFuture
+import io.vertx.core.Promise
 import io.vertx.core.Verticle
 import io.vertx.core.Vertx
 import io.vertx.kotlin.coroutines.await
@@ -40,6 +41,7 @@ class VerticleKodeinProvider(
   private val log: Logger = LoggerFactory.getLogger(VerticleKodeinProvider::class.java)
 ) {
   private val verticleClassToVerticles = ConcurrentHashMap<KClass<out Verticle>, List<Verticle>>()
+  private val creationCompletePromises = ConcurrentHashMap<KClass<out Verticle>, Promise<out Verticle>>()
 
   private fun containsVerticleClass(verticleClass: KClass<out Verticle>) =
     verticleClassToVerticles.containsKey(verticleClass)
@@ -52,6 +54,22 @@ class VerticleKodeinProvider(
   // TODO: should this be "synchronized" or is that handled by Kodein?
   fun <T: Verticle> findOrCreate(verticleClass: KClass<T>, factory: () -> T): T {
     if (containsVerticleClass(verticleClass)) { return verticleForClass(verticleClass) as T }
+
+    // else add completion future to creating set (some kind of concurrent set that will fail on
+    //   multiple adds)
+    val createCompletePromise = Promise.promise<T>()
+
+    val otherCompletePromise: Promise<out Verticle>? =
+      creationCompletePromises.putIfAbsent(verticleClass, createCompletePromise)
+
+    if (otherCompletePromise != null) {
+      val completed = otherCompletePromise.future().onComplete({ return it.result() as T })
+    }
+
+
+    // if the add to creating set fails then there was another factory call that got in first, and
+    //   now we should await on the completion future (which will hold something we can use,
+    //   an instance, I'm guessing
 
     log.debugIf { "Attempting to create the verticle class: ${verticleClass.qualifiedName}" }
 

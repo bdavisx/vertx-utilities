@@ -25,7 +25,7 @@ import com.snapleft.vertx.AggregateEvent
 import com.snapleft.vertx.AggregateId
 import com.snapleft.vertx.AggregateSnapshot
 import com.snapleft.vertx.DefaultSuccessReply
-import com.snapleft.vertx.DirectCallVerticle
+import com.snapleft.vertx.DirectCallDelegate
 import com.snapleft.vertx.ErrorReply
 import com.snapleft.vertx.FailureReply
 import com.snapleft.vertx.VCommand
@@ -38,6 +38,7 @@ import com.snapleft.vertx.sqlclient.batchWithParamsAsync
 import com.snapleft.vertx.sqlclient.queryWithParamsAsync
 import com.snapleft.vertx.sqlclient.updateWithParamsAsync
 import com.snapleft.vertx.successReplyRight
+import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import io.vertx.sqlclient.Row
 import io.vertx.sqlclient.RowSet
@@ -60,18 +61,25 @@ data class StoreAggregateSnapshotCommand(
 class EventSourcingApiVerticle(
   private val databasePool: EventSourcingPool,
   private val databaseMapper: TypedObjectMapper,
+  private val directCallDelegate: DirectCallDelegate,
   private val log: Logger = LoggerFactory.getLogger(EventSourcingApiVerticle::class.java)
-): DirectCallVerticle<EventSourcingApiVerticle>(EventSourcingApiVerticle::class.qualifiedName!!) {
+): CoroutineVerticle() {
+  private val thisAddress = EventSourcingApiVerticle::class.qualifiedName!!
 
   @Language("PostgreSQL")
   private val insertEventsSql = """
     insert into event_sourcing.events (aggregate_id, version_number, data)
     values ($1, $2, cast($3 as json))""".trimIndent()
 
+  override suspend fun start() {
+    super.start()
+    directCallDelegate.registerAddress(thisAddress, this)
+  }
+
   // TODO: where do we put the retry logic? Here or a higher level? And should it be a
   //  circuit breaker? (probably should)
   suspend fun storeAggregateEvents(command: StoreAggregateEventsCommand)
-    = actAndReply {
+    = directCallDelegate.actAndReply {
 
     var connection: SqlConnection? = null
     try {
@@ -102,7 +110,7 @@ class EventSourcingApiVerticle(
     """.trimIndent()
 
   suspend fun loadAggregateEvents(query: AggregateEventsQuery)
-    : Either<CommandFailedDueToException, List<AggregateEvent>> = actAndReply {
+    : Either<CommandFailedDueToException, List<AggregateEvent>> = directCallDelegate.actAndReply {
     val (aggregateId: AggregateId, aggregateVersion: Long) = query
 
     var connection: SqlConnection? = null
@@ -131,7 +139,7 @@ class EventSourcingApiVerticle(
       insert into event_sourcing.snapshots (aggregate_id, version_number, data)
       values ($1, $2, cast($3 as json))""".trimIndent()
 
-  suspend fun storeAggregateSnapshot(snapshot: AggregateSnapshot) = actAndReply {
+  suspend fun storeAggregateSnapshot(snapshot: AggregateSnapshot) = directCallDelegate.actAndReply {
     storeAggregateSnapshotActAndReply(StoreAggregateSnapshotCommand(snapshot.aggregateId, snapshot))
   }
 
@@ -176,7 +184,7 @@ class EventSourcingApiVerticle(
       limit 1""".trimIndent()
 
   suspend fun loadLatestAggregateSnapshot(query: LatestAggregateSnapshotQuery)
-    : Either<CommandFailedDueToException, AggregateSnapshot?> = actAndReply {
+    : Either<CommandFailedDueToException, AggregateSnapshot?> = directCallDelegate.actAndReply {
 
     var connection: SqlConnection? = null
     try {

@@ -18,6 +18,7 @@
 package com.snapleft.vertx.dependencyinjection
 
 import com.snapleft.utilities.RandomGenerator
+import com.snapleft.vertx.DirectCallDelegate
 import com.snapleft.vertx.IdGenerator
 import com.snapleft.vertx.RouterVerticle
 import com.snapleft.vertx.codecs.TypedObjectMapper
@@ -52,8 +53,10 @@ fun vertxUtilitiesModule(vertx: Vertx) = DI.Module("vertxUtilitiesModule") {
   bind<EventPublisher>() with singleton { EventPublisher(i()) }
   bind<EventRegistrar>() with singleton { EventRegistrar(i(), i()) }
 
+  bind<DirectCallDelegate>() with provider { DirectCallDelegate(i()) }
+
   bind<EventSourcingApiVerticle>() with provider {
-    v().findOrCreate(EventSourcingApiVerticle::class) {EventSourcingApiVerticle(i(), i()) }}
+    v().findOrCreate(EventSourcingApiVerticle::class) {EventSourcingApiVerticle(i(), i(), i()) }}
 
   bind<RandomGenerator>() with singleton { RandomGenerator() }
   bind<IdGenerator>() with singleton { i<RandomGenerator>()::generateId }

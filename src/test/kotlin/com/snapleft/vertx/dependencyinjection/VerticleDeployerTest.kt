@@ -18,7 +18,7 @@
 package com.snapleft.vertx.dependencyinjection
 
 import com.snapleft.test.utilities.AbstractVertxTest
-import com.snapleft.vertx.DirectCallVerticle
+import com.snapleft.vertx.DirectCallDelegate
 import com.snapleft.vertx.setupVertxKodein
 import io.kotest.matchers.shouldBe
 import io.vertx.core.Promise
@@ -59,10 +59,11 @@ class VerticleDeployerTest: AbstractVertxTest() {
 
         deploymentPromise.future().succeeded() shouldBe true
         deployment.deploymentId.isBlank() shouldBe false
-        log.debug(deployment.toString())
+        log.debug("deployment in singleDeployment: $deployment")
 
         context.completeNow()
       } catch(ex: Throwable) {
+        context.failNow(ex)
         fail(ex)
       }
     }}
@@ -71,7 +72,7 @@ class VerticleDeployerTest: AbstractVertxTest() {
 
   val testModule = DI.Module("VertxDeployerTestModule") {
   bind<SimpleVerticle>() with provider { SimpleVerticle() }
-  bind<MultipleDeploymentVerticle>() with factory {id: String -> MultipleDeploymentVerticle(id) }
+  bind<MultipleDeploymentVerticle>() with factory {id: String -> MultipleDeploymentVerticle(id, i()) }
 }
 
 class SimpleVerticle: CoroutineVerticle()
@@ -84,18 +85,23 @@ class SimpleVerticle: CoroutineVerticle()
  * one you expect when the code runs.
  */
 @PercentOfMaximumVerticleInstancesToDeploy(50)
-class MultipleDeploymentVerticle(id: String)
-  : DirectCallVerticle<MultipleDeploymentVerticle>(id) {
+class MultipleDeploymentVerticle(val id: String, val directCallDelegate: DirectCallDelegate)
+  : CoroutineVerticle() {
   private val log = LoggerFactory.getLogger(MultipleDeploymentVerticle::class.java)
 
   var counter: Int = 0  // DON'T usually want anything like this in a multi instance verticle
 
-  suspend fun increment() = act {
+  override suspend fun start() {
+    super.start()
+    directCallDelegate.registerAddress(id, this)
+  }
+
+  suspend fun increment() = directCallDelegate.act {
     log.debug("Incrementing counter")
-    it.counter++
+    counter++
   }
 
   override fun toString(): String {
-    return "MultipleDeploymentVerticle(localAddress=$localAddress; counter=$counter)"
+    return "MultipleDeploymentVerticle(localAddress=$id; counter=$counter)"
   }
 }

@@ -10,6 +10,7 @@ import io.vertx.core.Promise
 import io.vertx.core.Vertx
 import io.vertx.ext.unit.TestContext
 import io.vertx.ext.unit.junit.VertxUnitRunner
+import io.vertx.kotlin.coroutines.CoroutineVerticle
 import io.vertx.kotlin.coroutines.await
 import io.vertx.kotlin.coroutines.awaitEvent
 import io.vertx.kotlin.coroutines.awaitResult
@@ -27,13 +28,18 @@ import java.util.UUID
 /** Dummy data class w/ a var for the verticle to manipulate. Wouldn't normally do this, but it's a test. */
 data class ManipulateMe(var value: Int = 0)
 
-class TestDirectCallVerticle(id: String): DirectCallVerticle<TestDirectCallVerticle>(id) {
+class TestDirectCallVerticle(val id: String, val delegate: DirectCallDelegate): CoroutineVerticle() {
   private val log = LoggerFactory.getLogger(TestDirectCallVerticle::class.java)
   val random = Random()
 
+  override suspend fun start() {
+    super.start()
+    delegate.registerAddress(id, this)
+  }
+
   // The code in the `act` block is run on the event loop, the current thread will await on it to
   // complete
-  suspend fun actFunction(manipulateMe: ManipulateMe) = act {
+  suspend fun actFunction(manipulateMe: ManipulateMe) = delegate.act {
     logContext("act", vertx.getOrCreateContext())
     delay()
     manipulateMe.value++
@@ -41,7 +47,7 @@ class TestDirectCallVerticle(id: String): DirectCallVerticle<TestDirectCallVerti
 
   // The code in the `actAndReply` block is run on the event loop, the current thread will await on
   // it to complete and the value returned by the block is returned to the caller.
-  suspend fun actAndReplyFunction() = actAndReply {
+  suspend fun actAndReplyFunction() = delegate.actAndReply {
     logContext("aAndR", vertx.getOrCreateContext())
     delay()
     5
@@ -49,7 +55,7 @@ class TestDirectCallVerticle(id: String): DirectCallVerticle<TestDirectCallVerti
 
   // The code in the `actAndReply` block is run on the event loop, the current thread will *NOT* await on
   // it to complete and return immediately
-  fun fireAndForgetFunction(promise: Promise<Int>) = fireAndForget {
+  fun fireAndForgetFunction(promise: Promise<Int>) = delegate.fireAndForget {
     logContext("fAndF", vertx.getOrCreateContext())
     delay()
     promise.complete(10)
@@ -68,7 +74,7 @@ class TestDirectCallVerticle(id: String): DirectCallVerticle<TestDirectCallVerti
 }
 
 @RunWith(VertxUnitRunner::class)
-class DirectCallVerticleTest {
+class DirectCallDelegateTest {
   private val log = LoggerFactory.getLogger(this.javaClass)
   var vertx: Vertx = Vertx.vertx()
 
@@ -98,7 +104,7 @@ class DirectCallVerticleTest {
           val deploymentOptions = DeploymentOptions()
 
           val id = UUID.randomUUID().toString()
-          val verticle = TestDirectCallVerticle(id)
+          val verticle = TestDirectCallVerticle(id, DirectCallDelegate(vertx))
           awaitResult<String> { vertx.deployVerticle(verticle, deploymentOptions, it) }
 
           val manipulateMe = ManipulateMe(1)
@@ -133,7 +139,7 @@ class DirectCallVerticleTest {
 
           val id = UUID.randomUUID().toString()
           val verticlesRange = 0..3
-          val verticles = verticlesRange.map { TestDirectCallVerticle(id) }
+          val verticles = verticlesRange.map { TestDirectCallVerticle(id, DirectCallDelegate(vertx)) }
           val futures = verticles.map { vertx.deployVerticle(it, deploymentOptions) }
           CompositeFuture.all(futures).await()
 
