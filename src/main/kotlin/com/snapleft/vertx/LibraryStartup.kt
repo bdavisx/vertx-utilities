@@ -18,13 +18,24 @@ package com.snapleft.vertx
 
 import com.snapleft.utilities.debugIf
 import com.snapleft.vertx.codecs.PassThroughCodec
+import com.snapleft.vertx.commands.CommandRegistrar
+import com.snapleft.vertx.commands.CommandSender
 import com.snapleft.vertx.cqrs.eventsourcing.EventSourcingApiVerticle
+import com.snapleft.vertx.events.EventPublisher
+import com.snapleft.vertx.events.EventRegistrar
 import io.vertx.core.Vertx
+import io.vertx.core.eventbus.EventBus
 import io.vertx.kotlin.coroutines.CoroutineVerticle
 import org.kodein.di.DirectDI
 import org.kodein.di.TT
 import org.slf4j.LoggerFactory
 import kotlin.reflect.KClass
+
+/*
+Putting all the different startups in here so there's only one place you need to go to start the
+different pieces of the library. Not sure if that's the best design or not, but there's nothing
+stopping someone from doing their own startup in a different way.
+*/
 
 private val log = LoggerFactory.getLogger(VSerializable::class.java)
 
@@ -50,4 +61,23 @@ suspend fun startLibrary(vertx: Vertx, kodein: DirectDI) {
       kodein.directDI.Instance(TT(classToDeploy))
     }
   }
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+data class CommandsAndEventsSystem(
+  val commandSender: CommandSender,
+  val commandRegistrar: CommandRegistrar,
+  val eventPublisher: EventPublisher,
+  val eventRegistrar: EventRegistrar,
+)
+
+suspend fun createCommandsAndEventsSystem(eventBus: EventBus): CommandsAndEventsSystem {
+  val commandSender = CommandSender(eventBus)
+  val commandRegistrar = CommandRegistrar(eventBus, commandSender)
+
+  val eventPublisher = EventPublisher(eventBus)
+  val eventRegistrar = EventRegistrar(eventBus, commandSender)
+
+  return CommandsAndEventsSystem(commandSender, commandRegistrar, eventPublisher, eventRegistrar)
 }

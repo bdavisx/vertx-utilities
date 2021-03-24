@@ -21,7 +21,6 @@ import com.snapleft.vertx.codecs.PassThroughCodec
 import com.snapleft.vertx.commands.CommandRegistrar
 import com.snapleft.vertx.commands.CommandSender
 import com.snapleft.vertx.cqrs.database.databaseFactoryModule
-import com.snapleft.vertx.dependencyinjection.VerticleDeployer
 import com.snapleft.vertx.dependencyinjection.i
 import com.snapleft.vertx.dependencyinjection.vertxUtilitiesModule
 import com.snapleft.vertx.events.EventPublisher

@@ -15,7 +15,7 @@
  *
  */
 
-package com.snapleft.vertx.dependencyinjection
+package com.snapleft.vertx
 
 import com.snapleft.utilities.debugIf
 import io.vertx.core.DeploymentOptions

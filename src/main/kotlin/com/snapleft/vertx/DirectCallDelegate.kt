@@ -14,28 +14,35 @@ class ReturnValueCodeMessage<T: Any>(block: suspend () -> T): CodeMessage<T>(blo
 class UnitCodeMessage(block: suspend () -> Unit): CodeMessage<Unit>(block)
 class FireAndForgetCodeMessage(block: suspend () -> Unit): CodeMessage<Unit>(block)
 
+typealias DirectCallDelegateFactory =
+    (address: String, verticle: CoroutineScope, Vertx) -> DirectCallDelegate
+
+fun createDirectCallDelegate(address: String, coroutineScope: CoroutineScope, vertx: Vertx) =
+  DirectCallDelegate(address, coroutineScope, vertx)
+
+
 /**
  * Use the same id for multiple verticles if you want the calls to be distributed.
+ *
+ * @param coroutineScope A CoroutineVerticle is a CoroutineScope, so you can typically pass `this`
+ *   as the value for this parameter
  */
 class DirectCallDelegate(
-  private val vertx: Vertx
+  val address: String,
+  coroutineScope: CoroutineScope,
+  vertx: Vertx
   ) {
-  private lateinit var localAddress: String
+  private val eventBus = vertx.eventBus()
+
+  init {
+    vertx.eventBus().localConsumer<CodeMessage<*>>(address) {
+      coroutineScope.launch(vertx.dispatcher()) { runCode(it) }
+    }
+  }
 
   companion object {
     val codeDeliveryOptions = DeliveryOptions()
     init { codeDeliveryOptions.codecName = PassThroughCodec.codecName }
-  }
-
-  /**
-   * @param coroutineScope A CoroutineVerticle is a CoroutineScope, so you can typically pass `this`
-   *   as the value for this parameter
-   */
-  suspend fun registerAddress(localAddress: String, coroutineScope: CoroutineScope) {
-    this.localAddress = localAddress
-    vertx.eventBus().localConsumer<CodeMessage<*>>(localAddress) {
-      coroutineScope.launch(vertx.dispatcher()) { runCode(it) }
-    }
   }
 
   /**
@@ -46,7 +53,7 @@ class DirectCallDelegate(
   suspend fun act(block: suspend () -> Unit): Unit =
     // we could fire and forget here, but we want the semantics of "imperative" code like coroutines
     // have
-    vertx.eventBus().request<Unit>(localAddress, UnitCodeMessage(block), codeDeliveryOptions)
+    eventBus.request<Unit>(address, UnitCodeMessage(block), codeDeliveryOptions)
       .await().body()
 
   /**
@@ -55,7 +62,7 @@ class DirectCallDelegate(
    * and forget". The value returned by the block will be the return value for this function.
    */
   suspend fun <T: Any> actAndReply(block: suspend () -> T): T =
-    vertx.eventBus().request<T>(localAddress, ReturnValueCodeMessage(block), codeDeliveryOptions)
+    eventBus.request<T>(address, ReturnValueCodeMessage(block), codeDeliveryOptions)
       .await().body()
 
   /**
@@ -63,7 +70,7 @@ class DirectCallDelegate(
    * thread returns immediately.
    */
   fun fireAndForget(block: suspend () -> Unit) {
-    vertx.eventBus().send(localAddress, FireAndForgetCodeMessage(block), codeDeliveryOptions)
+    eventBus.send(address, FireAndForgetCodeMessage(block), codeDeliveryOptions)
   }
 
   private suspend fun runCode(codeMessage: Message<CodeMessage<*>>) {

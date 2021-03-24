@@ -17,47 +17,54 @@
 package com.snapleft.vertx.cqrs.database
 
 import com.snapleft.utilities.debugIf
-import com.snapleft.vertx.dependencyinjection.i
 import io.vertx.core.Vertx
 import io.vertx.kotlin.sqlclient.poolOptionsOf
 import io.vertx.pgclient.PgConnectOptions
 import io.vertx.pgclient.PgPool
 import io.vertx.sqlclient.Pool
-import org.kodein.di.DI
-import org.kodein.di.bind
-import org.kodein.di.singleton
 import org.slf4j.LoggerFactory
 
 /*
-    By inheriting AbstractPool, we can create a Type specific class that can act as a AbstractPool. This
-    allows us to actually specify a particular interface as a dependency (e.g. QueryAbstractPool,
-    which is a JDBC Client specifically for the query side in CQRS.
+By inheriting AbstractPool, we can create a Type specific class that can act as a AbstractPool. This
+allows us to actually specify a particular interface as a dependency (e.g. QueryModelPool, which is
+a Client specifically for the query side in CQRS).
 
-    We don't change AbstractPool or add to it in any way. This is specifically about declaring a
-    dependency on a specific database connection.
+We don't change AbstractPool or add to it in any way. This is specifically about declaring a
+dependency on a specific database connection.
 */
 
 class EventSourcingPool(pool: Pool): AbstractPool(pool)
 class AuthenticationPool(pool: Pool): AbstractPool(pool)
 class QueryModelPool(pool: Pool): AbstractPool(pool)
 
-val databaseFactoryModule = DI.Module("databaseFactoryModule") {
-  val environment: MutableMap<String, String> = System.getenv()
+fun createAuthenticationPool(
+  vertx: Vertx,
+  environment: Map<String, String>,
+  environmentNamePrefix: String = "databaseQueryModel"
+) =
+  AuthenticationPool(AbstractPool.createPool(vertx, environment, environmentNamePrefix))
 
-  bind<AuthenticationPool>() with singleton {
-    AuthenticationPool(AbstractPool.createPool(i(), environment, "databaseQueryModel")) }
+fun createEventSourcingPool(
+  vertx: Vertx,
+  environment: Map<String, String>,
+  environmentNamePrefix: String = "databaseEventSourcing"
+) =
+  EventSourcingPool(AbstractPool.createPool(vertx, environment, environmentNamePrefix))
 
-  bind<EventSourcingPool>() with singleton {
-    EventSourcingPool(AbstractPool.createPool(i(), environment, "databaseEventSourcing")) }
+fun createQueryModelPool(
+  vertx: Vertx,
+  environment: Map<String, String>,
+  environmentNamePrefix: String = "databaseQueryModel"
+) =
+  QueryModelPool(AbstractPool.createPool(vertx, environment, environmentNamePrefix))
 
-  bind<QueryModelPool>() with singleton {
-    QueryModelPool(AbstractPool.createPool(i(), environment, "databaseQueryModel")) }
-}
 
 abstract class AbstractPool(private val pool: Pool): Pool by pool {
 
   companion object {
     val log = LoggerFactory.getLogger(EventSourcingPool::class.java)
+
+    const val defaultMaxPoolSizeText = "5"
 
     fun createPool(vertx: Vertx, environment: Map<String, String>, environmentNamePrefix: String)
       : Pool {
@@ -66,7 +73,9 @@ abstract class AbstractPool(private val pool: Pool): Pool by pool {
       log.debugIf { "prefix: $environmentNamePrefix;  Config: $databaseConfiguration" }
 
       // Pool Options
-      val maxPoolSize = environment.getOrDefault("${environmentNamePrefix}MaxPoolSize","5").toInt()
+      val maxPoolSize = environment.getOrDefault("${environmentNamePrefix}MaxPoolSize",
+        defaultMaxPoolSizeText
+      ).toInt()
       val poolOptions = poolOptionsOf(maxSize = maxPoolSize)
 
       // Create the pool from the data object

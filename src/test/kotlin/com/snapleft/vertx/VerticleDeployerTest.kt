@@ -15,11 +15,10 @@
  *
  */
 
-package com.snapleft.vertx.dependencyinjection
+package com.snapleft.vertx
 
 import com.snapleft.test.utilities.AbstractVertxTest
-import com.snapleft.vertx.DirectCallDelegate
-import com.snapleft.vertx.setupVertxKodein
+import com.snapleft.vertx.factories.PercentOfMaximumVerticleInstancesToDeploy
 import io.kotest.matchers.shouldBe
 import io.vertx.core.Promise
 import io.vertx.junit5.VertxTestContext

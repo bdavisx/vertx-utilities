@@ -16,9 +16,9 @@
 package com.snapleft.vertx
 
 import com.snapleft.utilities.debugIf
-import com.snapleft.vertx.dependencyinjection.PercentOfMaximumVerticleInstancesToDeploy
 import com.snapleft.vertx.events.EventPublisher
 import com.snapleft.vertx.events.EventRegistrar
+import com.snapleft.vertx.factories.PercentOfMaximumVerticleInstancesToDeploy
 import io.vertx.core.http.HttpMethod
 import io.vertx.core.http.HttpServer
 import io.vertx.ext.web.Route
@@ -40,18 +40,17 @@ typealias RouteHandler = suspend (RoutingContext) -> Unit
 class RouterVerticle(
   private val eventPublisher: EventPublisher,
   private val eventRegistrar: EventRegistrar,
-  private val directCallDelegate: DirectCallDelegate
+  directCallDelegateFactory: DirectCallDelegateFactory
 ): CoroutineVerticle() {
   private val log = LoggerFactory.getLogger(RouterVerticle::class.java)
   private val thisAddress = RouterVerticle::class.qualifiedName!!
+  private val directCallDelegate = directCallDelegateFactory(thisAddress, this, vertx)
 
   private lateinit var mainRouter: Router
   private lateinit var server: HttpServer
 
   override suspend fun start() {
     super.start()
-
-    directCallDelegate.registerAddress(thisAddress, this)
 
     eventRegistrar.registerEventHandlerSuspendable(this, SubrouterAdded::class, ::subrouterAdded)
     eventRegistrar.registerEventHandlerSuspendable(this, SubrouterAddedForMethods::class,
