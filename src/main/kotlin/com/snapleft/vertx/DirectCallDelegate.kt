@@ -20,6 +20,7 @@ typealias DirectCallDelegateFactory =
 fun createDirectCallDelegate(address: String, coroutineScope: CoroutineScope, vertx: Vertx) =
   DirectCallDelegate(address, coroutineScope, vertx)
 
+inline fun directCallAddress(instance: Any): String = instance::class.qualifiedName!!
 
 /**
  * Use the same id for multiple verticles if you want the calls to be distributed.

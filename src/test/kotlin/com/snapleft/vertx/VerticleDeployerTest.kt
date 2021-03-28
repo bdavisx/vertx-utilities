@@ -29,10 +29,6 @@ import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import org.junit.Test
 import org.junit.jupiter.api.fail
-import org.kodein.di.DI
-import org.kodein.di.bind
-import org.kodein.di.factory
-import org.kodein.di.provider
 import org.slf4j.LoggerFactory
 
 class VerticleDeployerTest: AbstractVertxTest() {
@@ -45,9 +41,9 @@ class VerticleDeployerTest: AbstractVertxTest() {
 
     vertx.runOnContext { GlobalScope.launch(vertx.dispatcher()) {
       try {
-        val (vertx, kodein) = setupVertxKodein(listOf(testModule), vertx)
+        setupVertxKodein(vertx)
 
-        val deployer: VerticleDeployer = kodein.i()
+        val deployer = VerticleDeployer()
 
         val futures = deployer.deployVerticles(vertx, listOf(SimpleVerticle()))
 
@@ -69,11 +65,6 @@ class VerticleDeployerTest: AbstractVertxTest() {
   }
 }
 
-  val testModule = DI.Module("VertxDeployerTestModule") {
-  bind<SimpleVerticle>() with provider { SimpleVerticle() }
-  bind<MultipleDeploymentVerticle>() with factory {id: String -> MultipleDeploymentVerticle(id, i()) }
-}
-
 class SimpleVerticle: CoroutineVerticle()
 
 /*
@@ -84,15 +75,18 @@ class SimpleVerticle: CoroutineVerticle()
  * one you expect when the code runs.
  */
 @PercentOfMaximumVerticleInstancesToDeploy(50)
-class MultipleDeploymentVerticle(val id: String, val directCallDelegate: DirectCallDelegate)
-  : CoroutineVerticle() {
+class MultipleDeploymentVerticle(
+  val id: String,
+  val delegateFactory: DirectCallDelegateFactory
+): CoroutineVerticle() {
+
   private val log = LoggerFactory.getLogger(MultipleDeploymentVerticle::class.java)
+  private val directCallDelegate = delegateFactory(directCallAddress(this), this, vertx)
 
   var counter: Int = 0  // DON'T usually want anything like this in a multi instance verticle
 
   override suspend fun start() {
     super.start()
-    directCallDelegate.registerAddress(id, this)
   }
 
   suspend fun increment() = directCallDelegate.act {

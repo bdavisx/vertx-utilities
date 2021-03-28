@@ -25,7 +25,7 @@ import com.snapleft.vertx.AggregateEvent
 import com.snapleft.vertx.AggregateId
 import com.snapleft.vertx.AggregateSnapshot
 import com.snapleft.vertx.DefaultSuccessReply
-import com.snapleft.vertx.DirectCallDelegate
+import com.snapleft.vertx.DirectCallDelegateFactory
 import com.snapleft.vertx.ErrorReply
 import com.snapleft.vertx.FailureReply
 import com.snapleft.vertx.VCommand
@@ -57,14 +57,23 @@ data class StoreAggregateSnapshotCommand(
   val aggregateId: AggregateId, val snapshot: AggregateSnapshot): VCommand
 
 
+fun eventSourcingApiVerticleFactory(
+  databasePool: EventSourcingPool,
+  databaseMapper: TypedObjectMapper,
+  directCallDelegateFactory: DirectCallDelegateFactory,
+) =
+  EventSourcingApiVerticle(databasePool, databaseMapper, directCallDelegateFactory)
+
+
 @PercentOfMaximumVerticleInstancesToDeploy(100)
 class EventSourcingApiVerticle(
   private val databasePool: EventSourcingPool,
   private val databaseMapper: TypedObjectMapper,
-  private val directCallDelegate: DirectCallDelegate,
+  private val directCallDelegateFactory: DirectCallDelegateFactory,
   private val log: Logger = LoggerFactory.getLogger(EventSourcingApiVerticle::class.java)
 ): CoroutineVerticle() {
   private val thisAddress = EventSourcingApiVerticle::class.qualifiedName!!
+  private val directCallDelegate = directCallDelegateFactory(thisAddress, this, vertx)
 
   @Language("PostgreSQL")
   private val insertEventsSql = """
@@ -73,7 +82,6 @@ class EventSourcingApiVerticle(
 
   override suspend fun start() {
     super.start()
-    directCallDelegate.registerAddress(thisAddress, this)
   }
 
   // TODO: where do we put the retry logic? Here or a higher level? And should it be a

@@ -13,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.snapleft.vertx
+package com.snapleft.vertx.web
 
 import com.snapleft.utilities.debugIf
+import com.snapleft.vertx.DirectCallDelegateFactory
+import com.snapleft.vertx.VEvent
 import com.snapleft.vertx.events.EventPublisher
 import com.snapleft.vertx.events.EventRegistrar
 import com.snapleft.vertx.factories.PercentOfMaximumVerticleInstancesToDeploy
@@ -36,11 +38,20 @@ data class SubrouterAddedForMethods(
 
 typealias RouteHandler = suspend (RoutingContext) -> Unit
 
+fun routerVerticleFactory(
+  eventPublisher: EventPublisher,
+  eventRegistrar: EventRegistrar,
+  directCallDelegateFactory: DirectCallDelegateFactory
+) =
+  RouterVerticle(eventPublisher, eventRegistrar, directCallDelegateFactory, 8080)
+
+
 @PercentOfMaximumVerticleInstancesToDeploy(100)
 class RouterVerticle(
   private val eventPublisher: EventPublisher,
   private val eventRegistrar: EventRegistrar,
-  directCallDelegateFactory: DirectCallDelegateFactory
+  directCallDelegateFactory: DirectCallDelegateFactory,
+  val httpPort: Int = 8080,
 ): CoroutineVerticle() {
   private val log = LoggerFactory.getLogger(RouterVerticle::class.java)
   private val thisAddress = RouterVerticle::class.qualifiedName!!
@@ -59,7 +70,7 @@ class RouterVerticle(
     server = vertx.createHttpServer()
     mainRouter = Router.router(vertx)
     // TODO: parameterize the port
-    server.requestHandler(mainRouter).listen(8080).await()
+    server.requestHandler(mainRouter).listen(httpPort).await()
   }
 
   fun addRoute(route: String, handler: RouteHandler) = directCallDelegate.fireAndForget {

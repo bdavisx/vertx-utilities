@@ -16,51 +16,39 @@
 
 package com.snapleft.vertx
 
-import com.snapleft.utilities.debugIf
-import com.snapleft.vertx.codecs.PassThroughCodec
 import com.snapleft.vertx.commands.CommandRegistrar
 import com.snapleft.vertx.commands.CommandSender
-import com.snapleft.vertx.cqrs.eventsourcing.EventSourcingApiVerticle
 import com.snapleft.vertx.events.EventPublisher
 import com.snapleft.vertx.events.EventRegistrar
+import com.snapleft.vertx.factories.VerticleInstanceProvider
+import com.snapleft.vertx.web.RouterVerticle
+import com.snapleft.vertx.web.routerVerticleFactory
+import io.vertx.core.CompositeFuture
+import io.vertx.core.Future
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.EventBus
-import io.vertx.kotlin.coroutines.CoroutineVerticle
-import org.kodein.di.DirectDI
-import org.kodein.di.TT
 import org.slf4j.LoggerFactory
-import kotlin.reflect.KClass
-
-/*
-Putting all the different startups in here so there's only one place you need to go to start the
-different pieces of the library. Not sure if that's the best design or not, but there's nothing
-stopping someone from doing their own startup in a different way.
-*/
 
 private val log = LoggerFactory.getLogger(VSerializable::class.java)
 
-suspend fun startLibrary(vertx: Vertx, kodein: DirectDI) {
-  vertx.eventBus().registerCodec(PassThroughCodec())
+suspend fun startRouterVerticles(
+  vertx: Vertx,
+  deployer: VerticleDeployer,
+  instanceProvider: VerticleInstanceProvider,
+  eventPublisher: EventPublisher,
+  eventRegistrar: EventRegistrar,
+  directCallDelegateFactory: DirectCallDelegateFactory,
+) {
+  val instances = instanceProvider.createInstances(RouterVerticle::class, { routerVerticleFactory(
+    eventPublisher, eventRegistrar, directCallDelegateFactory
+  )})
 
-  log.debug("Deploying VerticleFactoryVerticle")
+  val deploymentPromises = deployer.deployVerticles(vertx, instances)
 
-  val startupVerticlesLists =
-    listOf (
-      listOf(
-        RouterVerticle::class,
-        EventSourcingApiVerticle::class
-      )
-    )
+  val futures: List<Future<VerticleDeployment>> = deploymentPromises.map {it.future()}
+  val allFutures = CompositeFuture.all(futures)
 
-  startupVerticlesLists.forEach { verticlesToDeploy: List<KClass<out CoroutineVerticle>> ->
-    log.debugIf { "Instantiating verticles: $verticlesToDeploy" }
-    verticlesToDeploy.forEach { classToDeploy ->
-      log.debugIf { "Instantiating verticle: ${classToDeploy.qualifiedName}" }
-      // TODO: what if this returns a failure, need to test the handling verticle to see what
-      //  happens with a failure
-      kodein.directDI.Instance(TT(classToDeploy))
-    }
-  }
+  val deployments = futures.map { it: Future<VerticleDeployment> -> it.result()}
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////
@@ -72,7 +60,7 @@ data class CommandsAndEventsSystem(
   val eventRegistrar: EventRegistrar,
 )
 
-suspend fun createCommandsAndEventsSystem(eventBus: EventBus): CommandsAndEventsSystem {
+fun createCommandsAndEventsSystem(eventBus: EventBus): CommandsAndEventsSystem {
   val commandSender = CommandSender(eventBus)
   val commandRegistrar = CommandRegistrar(eventBus, commandSender)
 

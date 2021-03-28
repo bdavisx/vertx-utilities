@@ -19,6 +19,7 @@ package com.snapleft.vertx.commands
 
 import com.natpryce.hamkrest.equalTo
 import com.snapleft.vertx.VCommand
+import com.snapleft.vertx.createTestVertxObjects
 import com.snapleft.vertx.setupVertxKodein
 import io.vertx.ext.unit.junit.RunTestOnContext
 import io.vertx.junit5.VertxExtension
@@ -26,7 +27,6 @@ import io.vertx.junit5.VertxTestContext
 import org.junit.Rule
 import org.junit.Test
 import org.junit.jupiter.api.extension.ExtendWith
-import org.kodein.type.generic
 
 @ExtendWith(VertxExtension::class)
 class CommandSenderTest {
@@ -36,7 +36,9 @@ class CommandSenderTest {
   @Test
   fun testItShouldSendACommandCorrectly() {
     val testContext = VertxTestContext()
-    val (vertx, dKodein) = setupVertxKodein(listOf(), rule.vertx())
+    val vertx = rule.vertx()
+    setupVertxKodein(vertx)
+    val vertxObjects = createTestVertxObjects(vertx)
 
     var receivedCommand: TestCommand? = null
     vertx.eventBus().consumer<TestCommand>(
@@ -44,9 +46,8 @@ class CommandSenderTest {
     }
 
     val command = TestCommand(1, "bdavisx@yahoo.com")
-    val sender = dKodein.Instance<CommandSender>(generic())
     val context = vertx.getOrCreateContext()
-    sender.send(command)
+    vertxObjects.commandSender.send(command)
 
     context.runOnContext {
       com.natpryce.hamkrest.assertion.assertThat(receivedCommand, equalTo(command))

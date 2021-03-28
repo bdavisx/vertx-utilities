@@ -1,4 +1,4 @@
-package com.snapleft.vertx
+package com.snapleft.vertx.web
 
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty

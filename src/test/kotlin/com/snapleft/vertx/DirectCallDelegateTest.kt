@@ -28,13 +28,16 @@ import java.util.UUID
 /** Dummy data class w/ a var for the verticle to manipulate. Wouldn't normally do this, but it's a test. */
 data class ManipulateMe(var value: Int = 0)
 
-class TestDirectCallVerticle(val id: String, val delegate: DirectCallDelegate): CoroutineVerticle() {
+class TestDirectCallVerticle(
+  val id: String,
+  val delegateFactory: DirectCallDelegateFactory
+): CoroutineVerticle() {
   private val log = LoggerFactory.getLogger(TestDirectCallVerticle::class.java)
+  private val delegate = delegateFactory(TestDirectCallVerticle::class.qualifiedName!!, this, vertx)
   val random = Random()
 
   override suspend fun start() {
     super.start()
-    delegate.registerAddress(id, this)
   }
 
   // The code in the `act` block is run on the event loop, the current thread will await on it to
@@ -104,7 +107,7 @@ class DirectCallDelegateTest {
           val deploymentOptions = DeploymentOptions()
 
           val id = UUID.randomUUID().toString()
-          val verticle = TestDirectCallVerticle(id, DirectCallDelegate(vertx))
+          val verticle = TestDirectCallVerticle(id, ::createDirectCallDelegate)
           awaitResult<String> { vertx.deployVerticle(verticle, deploymentOptions, it) }
 
           val manipulateMe = ManipulateMe(1)
@@ -139,7 +142,7 @@ class DirectCallDelegateTest {
 
           val id = UUID.randomUUID().toString()
           val verticlesRange = 0..3
-          val verticles = verticlesRange.map { TestDirectCallVerticle(id, DirectCallDelegate(vertx)) }
+          val verticles = verticlesRange.map { TestDirectCallVerticle(id, ::createDirectCallDelegate) }
           val futures = verticles.map { vertx.deployVerticle(it, deploymentOptions) }
           CompositeFuture.all(futures).await()
 

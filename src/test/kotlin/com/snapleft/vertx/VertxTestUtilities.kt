@@ -20,43 +20,19 @@ package com.snapleft.vertx
 import com.snapleft.vertx.codecs.PassThroughCodec
 import com.snapleft.vertx.commands.CommandRegistrar
 import com.snapleft.vertx.commands.CommandSender
-import com.snapleft.vertx.cqrs.database.databaseFactoryModule
-import com.snapleft.vertx.dependencyinjection.i
-import com.snapleft.vertx.dependencyinjection.vertxUtilitiesModule
 import com.snapleft.vertx.events.EventPublisher
 import com.snapleft.vertx.events.EventRegistrar
 import io.kotest.matchers.shouldBe
 import io.vertx.core.Vertx
 import io.vertx.core.eventbus.EventBus
-import io.vertx.junit5.VertxTestContext
 import io.vertx.sqlclient.Tuple
-import org.kodein.di.DI
-import org.kodein.di.DirectDI
-import org.kodein.di.direct
 
-data class VertxKodeinTestObjects(val vertx: Vertx, val dkodein: DirectDI)
-
-fun testModule() = DI.Module("testModule") {
-}
-
-
-fun setupVertxKodein(modules: Iterable<DI.Module>, vertx: Vertx)
-  : VertxKodeinTestObjects {
-
-  val modulesWithVertx =
-    mutableListOf(vertxUtilitiesModule(vertx), databaseFactoryModule, testModule())
-
-  modulesWithVertx.addAll(modules)
-  val dkodein = DI { modulesWithVertx.forEach { import(it) } }.direct
-
+fun setupVertxKodein(vertx: Vertx) {
   vertx.eventBus().registerCodec(PassThroughCodec())
-
-  return VertxKodeinTestObjects(vertx, dkodein)
 }
 
 data class TestVertxObjects(
   val vertx: Vertx,
-  val kodein: DirectDI,
   val commandSender: CommandSender,
   val verticleDeployer: VerticleDeployer,
   val commandRegistrar: CommandRegistrar,
@@ -65,13 +41,14 @@ data class TestVertxObjects(
   val eventBus: EventBus
 )
 
-fun createTestVertxObjects(modules: Iterable<DI.Module>, vertx: Vertx, testContext: VertxTestContext)
-  : TestVertxObjects {
+fun createTestVertxObjects(vertx: Vertx): TestVertxObjects {
 
-  val (_, kodein) = setupVertxKodein(modules, vertx)
+  setupVertxKodein(vertx)
 
-  return TestVertxObjects(vertx, kodein, kodein.i(), kodein.i(), kodein.i(), kodein.i(),
-    kodein.i(), kodein.i())
+  val system = createCommandsAndEventsSystem(vertx.eventBus())
+
+  return TestVertxObjects(vertx, system.commandSender, VerticleDeployer(), system.commandRegistrar,
+    system.eventRegistrar, system.eventPublisher, vertx.eventBus())
 }
 
 fun tupleShouldBe(tuple: Tuple, expectedTuple: Tuple) {

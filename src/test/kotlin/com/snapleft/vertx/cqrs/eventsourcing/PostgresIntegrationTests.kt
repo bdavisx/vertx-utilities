@@ -22,7 +22,11 @@ import com.snapleft.vertx.AggregateEvent
 import com.snapleft.vertx.AggregateId
 import com.snapleft.vertx.AggregateSnapshot
 import com.snapleft.vertx.AggregateVersion
+import com.snapleft.vertx.codecs.TypedObjectMapper
 import com.snapleft.vertx.commands.CommandFailedDueToException
+import com.snapleft.vertx.cqrs.database.createEventSourcingPool
+import com.snapleft.vertx.createDirectCallDelegate
+import com.snapleft.vertx.createTestVertxObjects
 import com.snapleft.vertx.setupVertxKodein
 import io.kotest.assertions.fail
 import io.kotest.matchers.shouldBe
@@ -40,7 +44,6 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty
 import org.junit.jupiter.api.extension.ExtendWith
-import org.kodein.di.instance
 import org.slf4j.LoggerFactory
 import java.util.UUID
 import java.util.concurrent.TimeUnit
@@ -65,13 +68,17 @@ class PostgresIntegrationTests {
 
     log.debug("Starting test...")
 
-    val (_, kodein) = setupVertxKodein(listOf(), vertx)
+    setupVertxKodein(vertx)
+    val vertxObjects = createTestVertxObjects(vertx)
     val retriever = ConfigRetriever.create(vertx)
     val configuration: JsonObject = awaitResult { retriever.getConfig(it) }
     val deploymentOptions = DeploymentOptions()
     deploymentOptions.config = configuration
 
-    val verticle = kodein.instance<EventSourcingApiVerticle>()
+    val pool = createEventSourcingPool(vertx, System.getenv())
+
+    val verticle = EventSourcingApiVerticle(pool, TypedObjectMapper.default,
+      ::createDirectCallDelegate)
 
     val runtimeInMilliseconds = measureTimeMillis {
       val aggregateId = AggregateId(UUID.randomUUID().toString())
@@ -112,13 +119,17 @@ class PostgresIntegrationTests {
   @Test(timeout = 5000)
   fun eventsInsertAndQuery() = runBlocking<Unit> {
     val context = VertxTestContext()
-    val (_, kodein) = setupVertxKodein(listOf(), vertx)
+    setupVertxKodein(vertx)
+    val vertxObjects = createTestVertxObjects(vertx)
     val retriever = ConfigRetriever.create(vertx)
     val configuration: JsonObject = awaitResult { h -> retriever.getConfig(h) }
     val deploymentOptions = DeploymentOptions()
     deploymentOptions.config = configuration
 
-    val verticle = kodein.instance<EventSourcingApiVerticle>()
+    val pool = createEventSourcingPool(vertx, System.getenv())
+
+    val verticle = EventSourcingApiVerticle(pool, TypedObjectMapper.default,
+      ::createDirectCallDelegate)
 
     val runtimeInMilliseconds = measureTimeMillis {
       val aggregateId = AggregateId(UUID.randomUUID().toString())
