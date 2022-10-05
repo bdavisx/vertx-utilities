@@ -35,7 +35,7 @@
 
     <vertx.version>4.0.0</vertx.version>
 
-    <jackson.version>2.11.1</jackson.version>
+    <jackson.version>2.12.6.1</jackson.version>
     <arrow.version>0.11.0</arrow.version>
 
     <kotest.version>4.0.7</kotest.version>
